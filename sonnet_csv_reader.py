@@ -90,7 +90,7 @@ def plot_dfs(dfs):
         plt.plot(x, y, label=labels[i], linestyle="-", color=colors[i])
     plt.xlabel(args.x_column)
     plt.ylabel(args.y_column)
-    plt.title(args.title)
+    plt.title("Plot of "+args.x_column+" vs. "+args.y_column+" for "+str(n_files)+" values of "+args.unit)
     plt.legend()
     if args.save:
         plt.savefig(get_out_filename("curves"))
@@ -138,7 +138,6 @@ def set_args():
     parser.add_argument("-x", "--x_column", help="Sonnet output column containing the x coordinates", default="Frequency (GHz)")
     parser.add_argument("-y", "--y_column", help="Sonnet output column containing the y coordinates", default="MAG[S21]")
     parser.add_argument("-s", "--save", help="Path to save the plots", default=None)
-    parser.add_argument("-t", "--title", help="Title of the plot", default="Plot of S21 against Frequency")
     parser.add_argument("-u", "--unit", help="Units varied in the directory", choices=unit_varied)
     parser.add_argument("-m", "--min", help="Minimum value of variable", default=1.0, type=float)
     parser.add_argument("-M", "--max", help="Maximum value of variable", default=6.0, type=float)
