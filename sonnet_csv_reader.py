@@ -93,10 +93,14 @@ def plot_dfs(dfs):
     plt.title(args.title)
     plt.legend()
     if args.save:
-        plt.savefig(os.path.expanduser(args.save))
+        plt.savefig(get_out_filename("curves"))
         plt.close()
     else:
         plt.show()
+
+def get_out_filename(suffix):
+    out_path = os.path.expanduser(args.save) + 'var_' + args.unit + '_' + args.min + '-' + args.max + '_' + suffix + '.' + args.type
+    return out_path
 
 def plot_mins(dfs):
     n_files = len(dfs)
@@ -108,7 +112,11 @@ def plot_mins(dfs):
     plt.xlabel(args.unit)
     plt.ylabel(args.x_column)
     plt.title("Plot of the minima in "+args.x_column+" against "+args.unit)
-    plt.show()
+    if args.save:
+        plt.savefig(get_out_filename("mins"))
+        plt.close()
+    else:
+        plt.show()
 
 def get_mins(dfs):
     mins=[]
@@ -124,23 +132,29 @@ def get_mins(dfs):
 def set_args():
     parser = argparse.ArgumentParser()
     unit_varied = ["ph_sq", "um_R", "um_L", "um_B"]
+    plot_options = ["curves", "both", "mins"]
+    file_types = ["png", "jpg", "jpeg", "pdf"]
     parser.add_argument("dir", help="Directory containing csv files")
     parser.add_argument("-x", "--x_column", help="Sonnet output column containing the x coordinates", default="Frequency (GHz)")
     parser.add_argument("-y", "--y_column", help="Sonnet output column containing the y coordinates", default="MAG[S21]")
-    parser.add_argument("-s", "--save", help="Path to save the plot", default=None)
+    parser.add_argument("-s", "--save", help="Path to save the plots", default=None)
     parser.add_argument("-t", "--title", help="Title of the plot", default="Plot of S21 against Frequency")
     parser.add_argument("-u", "--unit", help="Units varied in the directory", choices=unit_varied)
     parser.add_argument("-m", "--min", help="Minimum value of variable", default=1.0, type=float)
     parser.add_argument("-M", "--max", help="Maximum value of variable", default=6.0, type=float)
     parser.add_argument("-e", "--endpoint", help="Whether to remove the maximum value", action='store_false', default=True)
+    parser.add_argument("-N", "--n_plots", help="Select which plots to show", default="both", choices=plot_options)
+    parser.add_argument("-T", "--type", help="Select file type to save output files", default="png", choices=file_types)
 
     out_args = parser.parse_args()
     return out_args
 
 def main():
     dfs = get_dfs()
-    plot_dfs(dfs)
-    plot_mins(dfs)
+    if args.n_plots in ["both", "curves"]:
+        plot_dfs(dfs)
+    if args.n_plots in ["both", "mins"]:
+        plot_mins(dfs)
     pass
 
 if __name__ == '__main__':
