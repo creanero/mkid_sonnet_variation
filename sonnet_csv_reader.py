@@ -68,8 +68,8 @@ def get_dfs():
         dfs.append(read_one(csv))
     return dfs
 
-def gen_labels(steps):
-    points = np.linspace(args.min, args.max, steps, args.endpoint)
+def gen_labels(n_files):
+    points = np.linspace(args.min, args.max, n_files, args.endpoint)
     labels = []
     for point in points:
         labels.append(str(point)+'_'+str(args.unit))
@@ -79,11 +79,12 @@ def gen_labels(steps):
 
 
 def plot_dfs(dfs):
-    n = len(dfs)
-    colors = plt.cm.jet(np.linspace(0, 1, n))
-    labels = gen_labels(n)
+    n_files = len(dfs)
+    colors = plt.cm.jet(np.linspace(0, 1, n_files))
+    labels = gen_labels(n_files)
+    plt.figure()
 
-    for i in range(n):
+    for i in range(n_files):
         x, y = extract_f_s21_df(dfs[i])
 
         plt.plot(x, y, label=labels[i], linestyle="-", color=colors[i])
@@ -96,6 +97,29 @@ def plot_dfs(dfs):
         plt.close()
     else:
         plt.show()
+
+def plot_mins(dfs):
+    n_files = len(dfs)
+    x = np.linspace(args.min, args.max, n_files, args.endpoint)
+    y = get_mins(dfs)
+
+    plt.figure()
+    plt.plot(x, y)
+    plt.xlabel(args.unit)
+    plt.ylabel(args.x_column)
+    plt.title("Plot of the minima in "+args.x_column+" against "+args.unit)
+    plt.show()
+
+def get_mins(dfs):
+    mins=[]
+    for df in dfs:
+        # gets the index of the local minimum of the y column
+        min_y=df[args.y_column].idxmin()
+        # gets the value of the x variable that corresponds to the minimum in y
+        x_at_y_min = df[args.x_column][min_y]
+        # adds that x value to the collection
+        mins.append(x_at_y_min)
+    return mins
 
 def set_args():
     parser = argparse.ArgumentParser()
@@ -116,6 +140,7 @@ def set_args():
 def main():
     dfs = get_dfs()
     plot_dfs(dfs)
+    plot_mins(dfs)
     pass
 
 if __name__ == '__main__':
