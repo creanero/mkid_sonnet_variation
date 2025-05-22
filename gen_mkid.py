@@ -88,23 +88,36 @@ def file_read(in_filename):
     return text
 
 def gen_text():
-    content = ""
-    content = content + "\n" + gen_preamble()
-    content = content + "\n" + gen_geometry()
+    content = gen_preamble()
+    content = content + '\n' + gen_geometry()
     content = content + '\n' + gen_tail()
     return content
 
 def write_son(content):
+    out_path = check_path(args.save)
+    out_file = open(out_path, 'w')
+    out_file.write(content)
+    out_file.close()
     pass
+
+def check_path(path):
+    # dir_name = os.path.dirname(path)
+    # if os.path.isdir(dir_name):
+    #     return path + "/mkid.son"
+    # elif os.path.isfile(path):
+    #     return path
+    # elif
+    return path
 
 def set_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-l", "--ls", help="Kinetic inductance (pH/sq)", default=5.0, type=float)
     parser.add_argument("-x", "--x_scale", help="x-scale factor: minimum cell size in micrometres", default=1.0, type=float)
     parser.add_argument("-y", "--y_scale", help="y-scale factor: minimum cell size in micrometres", default=1.0, type=float)
-    parser.add_argument("-X", "x_size", help="x-size in micrometres", default=500.0, type=float)
-    parser.add_argument("-Y", "y_size", help="y-size in micrometres", default=500.0, type=float)
-    parser.add_argument("-N", "-num_fingers", help="Number of fingers", default=27, type=int)
+    parser.add_argument("-X", "--x_size", help="x-size in micrometres", default=500.0, type=float)
+    parser.add_argument("-Y", "--y_size", help="y-size in micrometres", default=500.0, type=float)
+    parser.add_argument("-N", "--num_fingers", help="Number of fingers", default=27, type=int)
+    parser.add_argument("-s", "--save", help="Save the generated son", default="./mkid.son", type=str)
     out_args = parser.parse_args()
     return out_args
 
