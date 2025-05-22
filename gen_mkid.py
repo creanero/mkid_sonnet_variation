@@ -76,6 +76,7 @@ def gen_part_finger():
     return part_finger_string
 
 def gen_sonnet_rectangle():
+    pass
 
 def count_substring(in_string, substring):
     counter = 0
