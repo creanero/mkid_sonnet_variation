@@ -1,7 +1,13 @@
 import argparse
 import os
-from operator import length_hint
 
+import numpy as np
+
+# global variables as placeholders
+cap_x_min = 24.0
+cap_y_min = 186.0
+cap_x_max = 476.0
+cap_y_max = 316.0
 
 def gen_preamble():
     preamble_text = file_read(os.path.expanduser('templates/head_dim_control.son'))
@@ -53,45 +59,73 @@ def gen_scale_line():
 def gen_polygons():
     base_polygon_string = gen_base_polygons()
     num_base_polygons = count_substring(base_polygon_string, "END")
-    full_fingers_string = gen_full_fingers()
-    num_full_fingers = count_substring(full_fingers_string, "END")
-    part_finger_string = gen_part_finger()
-    num_part_finger = count_substring(part_finger_string, "END")
-    num_polygons = num_full_fingers + num_base_polygons + num_part_finger
+    fingers_string = gen_fingers()
+    num_full_fingers = count_substring(fingers_string, "END")
+
+    num_polygons = num_full_fingers + num_base_polygons
     polygon_text = ('\nNUM ' + str(num_polygons) +
                     '\n' + base_polygon_string +
-                    '\n' + full_fingers_string +
-                    '\n' + part_finger_string)
+                    '\n' + fingers_string )
     return polygon_text
 
 def gen_base_polygons():
     base_polygon_string = file_read(os.path.expanduser('templates/base_polygons.son'))
     return base_polygon_string
 
-def gen_full_fingers():
-    full_fingers_string = file_read(os.path.expanduser('templates/fingers_27.son'))
-    return full_fingers_string
+def gen_fingers():
+    # fingers_string = file_read(os.path.expanduser('templates/fingers_27.son'))
+    fingers_string = '\n'
+    num_fingers = args.num_fingers
+    finger_length = args.length
+    finger_thickness = args.thick
+    finger_gap = args.gap
 
-def gen_part_finger(x_start=476.0, y_start=206.0, right=True):
+    end_fingers = cap_y_max - (finger_gap + finger_thickness) * num_fingers
+
+    # need to leave space for final (partial) finger
+    if end_fingers - (finger_gap + finger_thickness) < cap_y_min:
+        raise OverflowError
+
+    start_points = np.linspace(cap_y_max, end_fingers, num_fingers, endpoint=False)
+
+    for i in range(num_fingers):
+        right = bool(i%2)
+        x_min, x_max, y_min, y_max = gen_points(start_points[i], finger_length, right)
+        polygon_name = 100+i
+        fingers_string = fingers_string + gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name)
+
+    right = bool((i+1)%2)
+    fingers_string = fingers_string + gen_part_finger(end_fingers, right)
+
+    return fingers_string
+
+def gen_part_finger(y_start, right=True):
     # part_finger_string = file_read(os.path.expanduser('templates/incomplete_finger_28.son')
     finger_length = args.final
-    finger_thickness = args.thick
 
-    if right:
-        x_min = x_start - finger_length
-        x_max = x_start
-    else:
-        x_min = x_start
-        x_max = x_start + finger_length
+    x_min, x_max, y_min, y_max = gen_points(y_start, finger_length, right)
 
-    y_min = y_start
-    y_max = y_start + finger_thickness
-
-    part_finger_string = gen_sonnet_rectangle(x_min, x_max, y_min, y_max)
+    polygon_name = 200
+    part_finger_string = gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name)
     return part_finger_string
 
+def gen_points(y_start, finger_length, right=True):
+    finger_thickness = args.thick
+    if right:
+        x_min = cap_x_max - finger_length
+        x_max = cap_x_max
+    else:
+        x_min = cap_x_min
+        x_max = cap_x_min + finger_length
+
+    # following Sonnet file logic, which is reverse of display logic
+    y_min = y_start - finger_thickness
+    y_max = y_start
+
+    return x_min, x_max, y_min, y_max
+
 def gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name = 100):
-    # head line taken from template
+    # header line taken from template
     head = "0 5 0 N {} 1 1 100 100 0 0 0 Y".format(polygon_name)
     # this nomenclature is correct for how sonnet displays the geometry.
     # The indices Sonnet displays in the editor count from bottom left
@@ -161,6 +195,8 @@ def set_args():
     parser.add_argument("-N", "--num_fingers", help="Number of fingers", default=27, type=int)
     parser.add_argument("-s", "--save", help="Save the generated son", default="~/mkid.son", type=str)
     parser.add_argument("-t", "--thick", help="Thickness of fingers in micrometres", default=2.0, type=float)
+    parser.add_argument("-g", "--gap", help="Gap in micrometres", default=2.0, type=float)
+    parser.add_argument("-L", "--length", help="Length of fingers in micrometres", default=450.0, type=float)
     parser.add_argument("-f", "--final", help="length of final finger in micrometers", default=84.0, type=float)
     out_args = parser.parse_args()
     return out_args
