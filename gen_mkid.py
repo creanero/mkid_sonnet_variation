@@ -7,7 +7,7 @@ def gen_preamble():
     return preamble_text
 
 def gen_geometry():
-    geometry_text = "\n GEO"
+    geometry_text = "\nGEO"
     geometry_text = geometry_text + gen_met()
     geometry_text = geometry_text + gen_scale_line()
     geometry_text = geometry_text + gen_backing()
@@ -33,8 +33,13 @@ def gen_backing():
 
 def gen_scale_line():
     base_text = "BOX 1 "
-    x_scale_factor = 1000 / args.x_scale
-    y_scale_factor = 1000 / args.y_scale
+    # makes sure that the size that's selected is a valid multiple of the boxes selected
+    x_size = args.x_size - (args.x_size % args.x_scale)
+    y_size = args.y_size - (args.y_size % args.y_scale)
+
+    # calculates the number of boxes needed (doubled for Sonnet reasons
+    x_scale_factor = int(x_size*2 / args.x_scale)
+    y_scale_factor = int(y_size*2 / args.y_scale)
     trail_text = ' 20 0'
     out_text = ('\n' + base_text +
                 str(args.x_size) + ' ' +
@@ -69,6 +74,8 @@ def gen_full_fingers():
 def gen_part_finger():
     part_finger_string = file_read(os.path.expanduser('templates/incomplete_finger_28.son'))
     return part_finger_string
+
+def gen_sonnet_rectangle():
 
 def count_substring(in_string, substring):
     counter = 0
@@ -107,6 +114,7 @@ def check_path(path):
     # elif os.path.isfile(path):
     #     return path
     # elif
+    path=os.path.expanduser(path)
     return path
 
 def set_args():
@@ -117,7 +125,7 @@ def set_args():
     parser.add_argument("-X", "--x_size", help="x-size in micrometres", default=500.0, type=float)
     parser.add_argument("-Y", "--y_size", help="y-size in micrometres", default=500.0, type=float)
     parser.add_argument("-N", "--num_fingers", help="Number of fingers", default=27, type=int)
-    parser.add_argument("-s", "--save", help="Save the generated son", default="./mkid.son", type=str)
+    parser.add_argument("-s", "--save", help="Save the generated son", default="~/mkid.son", type=str)
     out_args = parser.parse_args()
     return out_args
 
