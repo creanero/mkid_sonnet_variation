@@ -1,0 +1,32 @@
+END GEO
+OPT
+MAX 100
+END OPT
+VARSWP
+ENABLED Y
+FREQ Y AY ABS_ENTRY 2.9003 5.4503 -1 2000
+END
+END VARSWP
+FILEOUT
+CSV D Y $BASENAME.csv NC 15 S MA R 50
+FOLDER .
+END FILEOUT
+TRANSLATOR
+GDSEXPORT
+UseTLs true
+SepObj false
+SepMat true
+DivideMulti false
+Circles false
+CircleType inscribed
+CircleSize 0
+KeepMetals true
+KeepVias false
+KeepViaPads false
+KeepBricks true
+KeepEdgeVias false
+KeepParent false
+ConvertParent false
+AllEdgeViasAsVia false
+END
+END TRANSLATOR
