@@ -72,11 +72,30 @@ def gen_full_fingers():
     return full_fingers_string
 
 def gen_part_finger():
-    part_finger_string = file_read(os.path.expanduser('templates/incomplete_finger_28.son'))
+    # part_finger_string = file_read(os.path.expanduser('templates/incomplete_finger_28.son'))
+    part_finger_string = gen_sonnet_rectangle(392, 476, 206, 208)
     return part_finger_string
 
-def gen_sonnet_rectangle():
-    pass
+def gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name = 100):
+    # head line taken from template
+    head = "0 5 0 N {} 1 1 100 100 0 0 0 Y".format(polygon_name)
+    # this nomenclature is correct for how sonnet displays the geometry.
+    # The indices Sonnet displays in the editor count from bottom left
+    # The positions used in the file count from top left
+    top_left = "{} {}".format(x_min, y_min)
+    top_right = "{} {}".format(x_max, y_min)
+    bottom_right = "{} {}".format(x_max, y_max)
+    bottom_left = "{} {}".format(x_min, y_max)
+
+    # the representation of a polygon in sonnet is as a loop
+    out_text = ('\n' + head +
+                '\n' + top_left +
+                '\n' + top_right +
+                '\n' + bottom_right +
+                '\n' + bottom_left +
+                '\n' + top_left +
+                "\nEND")
+    return out_text
 
 def count_substring(in_string, substring):
     counter = 0
