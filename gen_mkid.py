@@ -1,5 +1,6 @@
 import argparse
 import os
+from operator import length_hint
 
 
 def gen_preamble():
@@ -71,9 +72,22 @@ def gen_full_fingers():
     full_fingers_string = file_read(os.path.expanduser('templates/fingers_27.son'))
     return full_fingers_string
 
-def gen_part_finger():
-    # part_finger_string = file_read(os.path.expanduser('templates/incomplete_finger_28.son'))
-    part_finger_string = gen_sonnet_rectangle(392, 476, 206, 208)
+def gen_part_finger(x_start=476.0, y_start=206.0, right=True):
+    # part_finger_string = file_read(os.path.expanduser('templates/incomplete_finger_28.son')
+    finger_length = args.final
+    finger_thickness = args.thick
+
+    if right:
+        x_min = x_start - finger_length
+        x_max = x_start
+    else:
+        x_min = x_start
+        x_max = x_start + finger_length
+
+    y_min = y_start
+    y_max = y_start + finger_thickness
+
+    part_finger_string = gen_sonnet_rectangle(x_min, x_max, y_min, y_max)
     return part_finger_string
 
 def gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name = 100):
@@ -146,6 +160,8 @@ def set_args():
     parser.add_argument("-Y", "--y_size", help="y-size in micrometres", default=500.0, type=float)
     parser.add_argument("-N", "--num_fingers", help="Number of fingers", default=27, type=int)
     parser.add_argument("-s", "--save", help="Save the generated son", default="~/mkid.son", type=str)
+    parser.add_argument("-t", "--thick", help="Thickness of fingers in micrometres", default=2.0, type=float)
+    parser.add_argument("-f", "--final", help="length of final finger in micrometers", default=84.0, type=float)
     out_args = parser.parse_args()
     return out_args
 
