@@ -75,7 +75,8 @@ def gen_base_polygons():
 def gen_fingers():
     # fingers_string = file_read(os.path.expanduser('templates/fingers_27.son'))
     fingers_string = '\n'
-    num_fingers = args.num_fingers
+    # ensure this is an integer - quickfix, put into check_arguments() when developed
+    num_fingers = int(args.num_fingers)
     finger_length = args.length
     finger_thickness = args.thick
     finger_gap = args.gap
@@ -88,12 +89,14 @@ def gen_fingers():
 
     start_points = np.linspace(cap_y_max, end_fingers, num_fingers, endpoint=False)
 
+    i = 0
     for i in range(num_fingers):
         right = bool(i%2)
         x_min, x_max, y_min, y_max = gen_points(start_points[i], finger_length, right)
         polygon_name = 100+i
         fingers_string = fingers_string + gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name)
 
+    # python ranges end at final value. If ever translating this to C-like code, replace i+1 with i
     right = bool((i+1)%2)
     fingers_string = fingers_string + gen_part_finger(end_fingers, right)
 
@@ -182,8 +185,25 @@ def check_path(path):
     # elif os.path.isfile(path):
     #     return path
     # elif
-    path=os.path.expanduser(path)
+    if args.iter == "None":
+        path=os.path.expanduser(path)
+    else:
+        path = os.path.expanduser(path)
+        base_path = os.path.splitext(path)[0]
+        ext = os.path.splitext(path)[1]
+        suffix = '_'+str(args.iter)+'_'+str(getattr(args, args.iter)).replace('.','_')
+        path=base_path+suffix+ext
+        print(path)
     return path
+
+def gen_iter():
+    start_iter = getattr(args, args.iter)
+    end_iter = args.end
+    iter_range = np.linspace(start_iter, end_iter, args.count)
+    for iter_value in iter_range:
+        setattr(args, args.iter, iter_value)
+        content = gen_text()
+        write_son(content)
 
 def set_args():
     parser = argparse.ArgumentParser()
@@ -193,18 +213,24 @@ def set_args():
     parser.add_argument("-X", "--x_size", help="x-size in micrometres", default=500.0, type=float)
     parser.add_argument("-Y", "--y_size", help="y-size in micrometres", default=500.0, type=float)
     parser.add_argument("-N", "--num_fingers", help="Number of fingers", default=27, type=int)
-    parser.add_argument("-s", "--save", help="Save the generated son", default="~/mkid.son", type=str)
+    parser.add_argument("-s", "--save", help="Save the generated file", default="~/mkid.son", type=str)
     parser.add_argument("-t", "--thick", help="Thickness of fingers in micrometres", default=2.0, type=float)
     parser.add_argument("-g", "--gap", help="Gap in micrometres", default=2.0, type=float)
     parser.add_argument("-L", "--length", help="Length of fingers in micrometres", default=450.0, type=float)
     parser.add_argument("-f", "--final", help="length of final finger in micrometers", default=84.0, type=float)
+    iter_options = ["None", "length", "thick", "gap", "final", "num_fingers"]
+    parser.add_argument("-i", "--iter", help="Property to iterate over", default="None", choices=iter_options, type=str)
+    parser.add_argument("-e", "--end", help="Endpoint for iteration", default=None, type=float)
+    parser.add_argument("-c", "--count", help="Count of steps in iteration", default=10, type=int)
     out_args = parser.parse_args()
     return out_args
 
 def main():
-    content = gen_text()
-    write_son(content)
-    pass
+    if args.iter == "None":
+        content = gen_text()
+        write_son(content)
+    else:
+        gen_iter()
 
 if __name__ == '__main__':
     args = set_args()
