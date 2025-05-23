@@ -1,6 +1,6 @@
 import argparse
 import os
-
+import decimal
 import numpy as np
 
 # global variables as placeholders
@@ -41,20 +41,30 @@ def gen_backing():
 def gen_scale_line():
     base_text = "BOX 1 "
     # makes sure that the size that's selected is a valid multiple of the boxes selected
-    x_size = args.x_size - (args.x_size % args.x_scale)
-    y_size = args.y_size - (args.y_size % args.y_scale)
+    # Decimal and string logic are needed to minimise floating point errors
+    x_size, x_boxes = gen_safe_scale(args.x_size, args.x_scale)
+    y_size, y_boxes = gen_safe_scale(args.y_size, args.y_scale)
+    # y_size = args.y_size - (decimal.Decimal(str(args.y_size)) % decimal.Decimal(str(args.y_scale)))
 
     # calculates the number of boxes needed (doubled for Sonnet reasons
-    x_scale_factor = int(x_size*2 / args.x_scale)
-    y_scale_factor = int(y_size*2 / args.y_scale)
+    # x_boxes = int(decimal.Decimal(x_size*2) / decimal.Decimal(args.x_scale))
+    # y_boxes = int(decimal.Decimal(y_size*2) / decimal.Decimal(args.y_scale))
     trail_text = ' 20 0'
     out_text = ('\n' + base_text +
                 str(args.x_size) + ' ' +
                 str(args.y_size) + ' ' +
-                str(x_scale_factor) + ' ' +
-                str(y_scale_factor) +
+                str(x_boxes) + ' ' +
+                str(y_boxes) +
                 trail_text)
     return out_text
+
+def gen_safe_scale(size, scale_factor):
+    dec_size = decimal.Decimal(str(size))
+    dec_scale_factor = decimal.Decimal(str(scale_factor))
+    safe_size = dec_size - (dec_size % dec_scale_factor)
+    safe_boxes = (2 * dec_size) // dec_scale_factor
+    return safe_size, safe_boxes
+
 
 def gen_polygons():
     base_polygon_string = gen_base_polygons()
