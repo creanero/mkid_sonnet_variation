@@ -98,8 +98,13 @@ def plot_dfs(dfs):
     else:
         plt.show()
 
-def get_out_filename(suffix):
-    out_path = os.path.expanduser(args.save) + 'var_' + args.unit + '_' + args.min + '-' + args.max + '_' + suffix + '.' + args.type
+def get_out_filename(suffix, file_type=None):
+    if file_type is None:
+        file_type = args.type
+    out_path = os.path.expanduser(args.save) + ('var_' + args.unit + '_' +
+                                                str(args.min) + '-' +
+                                                str(args.max) + '_' +
+                                                suffix + '.' + file_type)
     return out_path
 
 def plot_mins(dfs):
@@ -115,6 +120,9 @@ def plot_mins(dfs):
     if args.save:
         plt.savefig(get_out_filename("mins"))
         plt.close()
+        out_dict={args.unit:x, args.x_column:y}
+        out_df=pd.DataFrame(out_dict)
+        out_df.to_csv(get_out_filename("mins", file_type="csv"))
     else:
         plt.show()
 
@@ -138,9 +146,9 @@ def set_args():
     parser.add_argument("-x", "--x_column", help="Sonnet output column containing the x coordinates", default="Frequency (GHz)")
     parser.add_argument("-y", "--y_column", help="Sonnet output column containing the y coordinates", default="MAG[S21]")
     parser.add_argument("-s", "--save", help="Path to save the plots", default=None)
-    parser.add_argument("-u", "--unit", help="Units varied in the directory", choices=unit_varied)
+    parser.add_argument("-u", "--unit", help="Units varied in the directory", choices=unit_varied, default="ph_sq")
     parser.add_argument("-m", "--min", help="Minimum value of variable", default=1.0, type=float)
-    parser.add_argument("-M", "--max", help="Maximum value of variable", default=6.0, type=float)
+    parser.add_argument("-M", "--max", help="Maximum value of variable", default=4.0, type=float)
     parser.add_argument("-e", "--endpoint", help="Whether to remove the maximum value", action='store_false', default=True)
     parser.add_argument("-N", "--n_plots", help="Select which plots to show", default="both", choices=plot_options)
     parser.add_argument("-T", "--type", help="Select file type to save output files", default="png", choices=file_types)
