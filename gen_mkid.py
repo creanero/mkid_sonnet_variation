@@ -89,12 +89,12 @@ def gen_fingers():
     num_fingers = int(args.num_fingers)
     finger_length = args.length
     finger_thickness = args.thick
-    finger_gap = args.gap
+    finger_space = args.space
 
-    end_fingers = cap_y_max - (finger_gap + finger_thickness) * num_fingers
+    end_fingers = cap_y_max - (finger_space * num_fingers)
 
     # need to leave space for final (partial) finger
-    if end_fingers - (finger_gap + finger_thickness) < cap_y_min:
+    if (end_fingers - finger_space) < cap_y_min:
         raise OverflowError
 
     start_points = np.linspace(cap_y_max, end_fingers, num_fingers, endpoint=False)
@@ -225,10 +225,10 @@ def set_args():
     parser.add_argument("-N", "--num_fingers", help="Number of fingers", default=27, type=int)
     parser.add_argument("-s", "--save", help="Save the generated file", default="~/mkid.son", type=str)
     parser.add_argument("-t", "--thick", help="Thickness of fingers in micrometres", default=2.0, type=float)
-    parser.add_argument("-g", "--gap", help="Gap in micrometres", default=2.0, type=float)
+    parser.add_argument("-S", "--Space", help="Finger Spacing (start to start) in micrometres", default=4.0, type=float)
     parser.add_argument("-L", "--length", help="Length of fingers in micrometres", default=450.0, type=float)
     parser.add_argument("-f", "--final", help="length of final finger in micrometers", default=84.0, type=float)
-    iter_options = ["None", "length", "thick", "gap", "final", "num_fingers"]
+    iter_options = ["None", "length", "thick", "space", "final", "num_fingers"]
     parser.add_argument("-i", "--iter", help="Property to iterate over", default="None", choices=iter_options, type=str)
     parser.add_argument("-e", "--end", help="Endpoint for iteration", default=None, type=float)
     parser.add_argument("-c", "--count", help="Count of steps in iteration", default=10, type=int)
