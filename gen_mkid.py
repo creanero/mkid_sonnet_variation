@@ -225,7 +225,7 @@ def set_args():
     parser.add_argument("-N", "--num_fingers", help="Number of fingers", default=27, type=int)
     parser.add_argument("-s", "--save", help="Save the generated file", default="~/mkid.son", type=str)
     parser.add_argument("-t", "--thick", help="Thickness of fingers in micrometres", default=2.0, type=float)
-    parser.add_argument("-S", "--Space", help="Finger Spacing (start to start) in micrometres", default=4.0, type=float)
+    parser.add_argument("-S", "--space", help="Finger Spacing (start to start) in micrometres", default=4.0, type=float)
     parser.add_argument("-L", "--length", help="Length of fingers in micrometres", default=450.0, type=float)
     parser.add_argument("-f", "--final", help="length of final finger in micrometers", default=84.0, type=float)
     iter_options = ["None", "length", "thick", "space", "final", "num_fingers"]
