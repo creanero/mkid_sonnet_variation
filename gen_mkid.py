@@ -200,7 +200,7 @@ def check_path(path):
     else:
         path = os.path.expanduser(path)
         base_path = os.path.splitext(path)[0]
-        ext = os.path.splitext(path)[1]
+        ext = '.son'
         suffix = '_'+str(args.iter)+'_'+str(getattr(args, args.iter)).replace('.','_')
         path=base_path+suffix+ext
         print(path)
