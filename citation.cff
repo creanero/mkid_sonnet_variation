@@ -1,0 +1,23 @@
+cff-version: 1.2.0
+message: "Please cite this repo as below.  "
+authors:
+- family-names: "Creaner"
+  given-names: "Oisín"
+  orcid: "https://orcid.org/0000-0002-1080-0090"
+- family-names: "McAleer"
+  given-names: "Cáthal"
+- family-names: "Ulbricht"
+  given-names: "Gerhard"
+- family-names: "Donegan"
+  given-names: "Gary"
+- family-names: "Bracken"
+  given-names: "Colm"
+- family-names: "De Lucia"
+  given-names: "Mario"
+- family-names: "Ray"
+  given-names: "Tom"
+
+title: "MKID Sonnet Variation"
+version: 0
+date-released: 2025-06-
+url: "https://github.com/creanero/mkid_sonnet_variation"
