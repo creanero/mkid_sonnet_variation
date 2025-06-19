@@ -6,12 +6,14 @@ authors:
   orcid: "https://orcid.org/0000-0002-1080-0090"
 - family-names: "McAleer"
   given-names: "Cáthal"
+  orcid: "https://orcid.org/0000-0002-6772-2740"
 - family-names: "Ulbricht"
   given-names: "Gerhard"
 - family-names: "Donegan"
   given-names: "Gary"
 - family-names: "Bracken"
   given-names: "Colm"
+  orcid: "https://orcid.org/0000-0002-0773-7721"
 - family-names: "De Lucia"
   given-names: "Mario"
 - family-names: "Ray"
@@ -19,5 +21,5 @@ authors:
 
 title: "MKID Sonnet Variation"
 version: 0
-date-released: 2025-06-
+date-released: 2025-06-03
 url: "https://github.com/creanero/mkid_sonnet_variation"
