@@ -10,7 +10,7 @@ This tool generates MKID geometries based on command line inputs.  It is current
 `python3 gen_mkids.py -h` or `python3 sonnet_csv_reader.py -h`
 
 ## Publications
-[A poster](LTD_OC_2025.pdf) describing the initial version of this software was presented at the Low Temperature Detectors conference on $3^{rd}$ June 2025.
+[A poster](LTD_2025_OC.pdf) describing the initial version of this software was presented at the Low Temperature Detectors conference on $3^{rd}$ June 2025.
 
 ## Acknowledgements
 A template by Cathal McAleer is used as the base geometry. 
