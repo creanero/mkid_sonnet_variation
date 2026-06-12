@@ -26,7 +26,7 @@ def gen_geometry():
     """
     Generate the Sonnet geometry: the metals, the scale parameters, the backing material and
     the polygons that make up the circuit.
-    :return:
+    :return: string containing the text for the geometry (circuit)
     """
     # Writes the "open" for the geometry
     geometry_text = "\nGEO"
@@ -48,7 +48,7 @@ def gen_met():
     """
     Generates the "metals" to be used in the circuit. Most of these come from template files
     The kinetic inductance parameter is set based on the arguments
-    :return:
+    :return: string containing the "metals" used in the Sonnet simulation
     """
     # Extracts the TMET and BMET parameters from a template
     met_text = '\n' + file_read(os.path.expanduser('templates/met_p1.son'))
@@ -61,7 +61,13 @@ def gen_met():
 
 
 def gen_ls_line():
+    """
+    Generates the line controlling the kinetic inductance per square of the circuit
+    :return: string containing the line for "metal" MET 1, used in the rest of the circuit
+    """
+    # Creates the base text used to define metal 1 as a superconductor
     base_text = 'MET "superconductor" 1 SUP 0 0 0 '
+    # adds the kinetic inductance in picoHenry per square to the line
     out_text = '\n' + base_text + str(args.ls)
     return out_text
 
