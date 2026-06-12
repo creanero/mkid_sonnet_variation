@@ -133,7 +133,6 @@ def gen_polygons():
     :return:
     """
     # Generate the base circuit (this includes the ground plane and inductor)
-    # TODO separate out the ground plane and inductor, and parameterise them
     base_polygon_string = gen_base_polygons()
 
     # Generates the capacitor fingers
@@ -153,6 +152,12 @@ def gen_polygons():
 
 
 def gen_base_polygons():
+    """
+    Generate the base circuit (this includes the ground plane and inductor)
+    :return:
+    """
+    # reads ground plane and inductor from a template file
+    # TODO separate out the ground plane and inductor, and parameterise them
     base_polygon_string = file_read(os.path.expanduser('templates/base_polygons.son'))
     return base_polygon_string
 
