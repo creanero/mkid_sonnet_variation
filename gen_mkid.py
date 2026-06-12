@@ -72,11 +72,6 @@ def gen_ls_line():
     return out_text
 
 
-def gen_backing():
-    backing_text = '\n' + file_read(os.path.expanduser('templates/backing.son'))
-    return backing_text
-
-
 def gen_scale_line():
     base_text = "BOX 1 "
     # makes sure that the size that's selected is a valid multiple of the boxes selected
@@ -104,6 +99,11 @@ def gen_safe_scale(size, scale_factor):
     safe_size = dec_size - (dec_size % dec_scale_factor)
     safe_boxes = (2 * dec_size) // dec_scale_factor
     return safe_size, safe_boxes
+
+
+def gen_backing():
+    backing_text = '\n' + file_read(os.path.expanduser('templates/backing.son'))
+    return backing_text
 
 
 def gen_polygons():
