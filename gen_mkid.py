@@ -200,6 +200,11 @@ def gen_text():
 
 
 def write_son(content):
+    """
+    Writes the content to a file
+    :param content: A string containing all of the content for a Sonnet Geometry file (.son)
+    :return:
+    """
     out_path = check_path(args.save)
     out_file = open(out_path, 'w')
     out_file.write(content)
