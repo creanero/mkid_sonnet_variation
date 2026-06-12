@@ -128,15 +128,27 @@ def gen_backing():
 
 
 def gen_polygons():
+    """
+    Generates the polygons that form the foreground circuit
+    :return:
+    """
+    # Generate the base circuit (this includes the ground plane and inductor)
+    # TODO separate out the ground plane and inductor, and parameterise them
     base_polygon_string = gen_base_polygons()
-    num_base_polygons = count_substring(base_polygon_string, "END")
-    fingers_string = gen_fingers()
-    num_full_fingers = count_substring(fingers_string, "END")
 
-    num_polygons = num_full_fingers + num_base_polygons
-    polygon_text = ('\nNUM ' + str(num_polygons) +
-                    '\n' + base_polygon_string +
-                    '\n' + fingers_string)
+    # Generates the capacitor fingers
+    fingers_string = gen_fingers()
+
+    # Combines the base and fingers strings
+    polygon_string = base_polygon_string + '\n' + fingers_string
+    # Counts the polygons in the string using the substring "END"
+    num_polygons = count_substring(base_polygon_string, "END")
+    # num_base_polygons = count_substring(base_polygon_string, "END")
+    # num_fingers = count_substring(fingers_string, "END")
+    # num_polygons = num_fingers + num_base_polygons
+
+    # Combines the polygons with the count
+    polygon_text = ('\nNUM ' + str(num_polygons) + '\n' + polygon_string)
     return polygon_text
 
 
