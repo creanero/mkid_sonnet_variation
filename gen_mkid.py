@@ -212,6 +212,7 @@ def check_path(path):
     # elif os.path.isfile(path):
     #     return path
     # elif
+    # TODO: Make this check if the path is valid, separate out path generation functionality
     if args.iter == "None":
         path = os.path.expanduser(path)
     else:
