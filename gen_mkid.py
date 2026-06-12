@@ -45,8 +45,17 @@ def gen_geometry():
 
 
 def gen_met():
+    """
+    Generates the "metals" to be used in the circuit. Most of these come from template files
+    The kinetic inductance parameter is set based on the arguments
+    :return:
+    """
+    # Extracts the TMET and BMET parameters from a template
     met_text = '\n' + file_read(os.path.expanduser('templates/met_p1.son'))
+    # Generates the line for the "metal" used in the circuit
     met_text = met_text + gen_ls_line()
+    # Extracts the "TiN multi" and "thick Ta" parameters from a template
+    # TODO: experiment to see/how if these can be replaced
     met_text = met_text + '\n' + file_read(os.path.expanduser('templates/met_p2.son'))
     return met_text
 
