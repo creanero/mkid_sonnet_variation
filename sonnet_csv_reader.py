@@ -11,6 +11,11 @@ from pygments.lexer import default
 
 
 def read_one(filename):
+    """
+    Read one CSV file into a data frame
+    :param filename: a string containing one file
+    :return: a dataframe containing the contents of filename
+    """
     out_df = pd.read_csv(filename, header=[1])
     return out_df
 
