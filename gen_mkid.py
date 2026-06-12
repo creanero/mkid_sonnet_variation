@@ -23,11 +23,23 @@ def gen_preamble():
 
 
 def gen_geometry():
+    """
+    Generate the Sonnet geometry: the metals, the scale parameters, the backing material and
+    the polygons that make up the circuit.
+    :return:
+    """
+    # Writes the "open" for the geometry
     geometry_text = "\nGEO"
+    # Writes the properties of the "metals" to be used in the circuit (e.g. kinetic inductance per square)
     geometry_text = geometry_text + gen_met()
+    # Writes a line explaining the dimensions and grid size to use (checked for floating point errors)
     geometry_text = geometry_text + gen_scale_line()
+    # pulls in the backing parameters from a file
+    # TODO: check what needs to be done for this to be parameterised
     geometry_text = geometry_text + gen_backing()
+    # Generates the polygons that constitute the circuit
     geometry_text = geometry_text + gen_polygons()
+    # End the geometry section
     geometry_text = geometry_text + '\nEND GEO'
     return geometry_text
 
