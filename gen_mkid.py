@@ -163,13 +163,20 @@ def gen_base_polygons():
 
 
 def gen_fingers():
-    # fingers_string = file_read(os.path.expanduser('templates/fingers_27.son'))
+    """
+    Generate the capacitor finger polygons
+    :return:
+    """
+    # TODO: refactor this function, it's messy and uses deprecated terminology
+    # TODO: Implement pitch, separation and breadth terminology
+    # starts the string with a newline
     fingers_string = '\n'
-    # TODO: ensure this is an integer - quickfix, put into check_arguments() when developed
+
+    # gets the finger properties from the arguments
     num_fingers = int(args.num_fingers)
     finger_length = args.length
     finger_thickness = args.thick
-    finger_space = args.space
+    finger_space = args.space  # this should be pitch in the new terminology
 
     end_fingers = cap_y_max - (finger_space * num_fingers)
 
