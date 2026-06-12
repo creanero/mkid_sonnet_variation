@@ -13,6 +13,11 @@ cap_y_max = 316.0
 
 
 def gen_preamble():
+    """
+    Generate the preamble (Header, dimensions and control) for the .son file from a template
+    :return:
+    """
+    # TODO: separately implement the header, dimensions, and control parameters
     preamble_text = file_read(os.path.expanduser('templates/head_dim_control.son'))
     return preamble_text
 
@@ -193,8 +198,15 @@ def file_read(in_filename):
 
 
 def gen_text():
+    """
+    Generate the text for the .son file in several parts.
+    :return: content (string containing the .son file content)
+    """
+    # generate the preamble (Header, dimensions and control)
     content = gen_preamble()
+    # generate the geometry (metals, scale, backing and polygons)
     content = content + '\n' + gen_geometry()
+    # generate the tail text (opt, var sweep, output file from sonnet, and translator)
     content = content + '\n' + gen_tail()
     return content
 
