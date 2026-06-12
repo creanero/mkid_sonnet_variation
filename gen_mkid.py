@@ -73,17 +73,23 @@ def gen_ls_line():
 
 
 def gen_scale_line():
+    """
+    Generates the line that defines the size of the circuit in micrometres
+    and the number of boxes in the grid in each dimension
+    :return:
+    """
     base_text = "BOX 1 "
     # makes sure that the size that's selected is a valid multiple of the boxes selected
-    # Decimal and string logic are needed to minimise floating point errors
     x_size, x_boxes = gen_safe_scale(args.x_size, args.x_scale)
     y_size, y_boxes = gen_safe_scale(args.y_size, args.y_scale)
     # y_size = args.y_size - (decimal.Decimal(str(args.y_size)) % decimal.Decimal(str(args.y_scale)))
-
-    # calculates the number of boxes needed (doubled for Sonnet reasons
     # x_boxes = int(decimal.Decimal(x_size*2) / decimal.Decimal(args.x_scale))
     # y_boxes = int(decimal.Decimal(y_size*2) / decimal.Decimal(args.y_scale))
+
+    # Generates the required trailing text
     trail_text = ' 20 0'
+
+    # combines the size and grid variables into a single string
     out_text = ('\n' + base_text +
                 str(args.x_size) + ' ' +
                 str(args.y_size) + ' ' +
@@ -94,9 +100,19 @@ def gen_scale_line():
 
 
 def gen_safe_scale(size, scale_factor):
+    """
+    Generates the size and number of boxes along a single dimension based in the arguments
+    :param size: Size of the axis in micrometres
+    :param scale_factor: desired maximum box size in micrometres
+    :return: safe_size (Decimal with desired size) safe_boxes (integer with the number of boxes)
+    """
+    # Extracts size and scale factor from the arguments
+    # Decimal and string logic are needed to minimise floating point errors
     dec_size = decimal.Decimal(str(size))
     dec_scale_factor = decimal.Decimal(str(scale_factor))
+    # removes any remainder from the size dimension
     safe_size = dec_size - (dec_size % dec_scale_factor)
+    # calculates the number of boxes needed (doubled for Sonnet reasons
     safe_boxes = (2 * dec_size) // dec_scale_factor
     return safe_size, safe_boxes
 
