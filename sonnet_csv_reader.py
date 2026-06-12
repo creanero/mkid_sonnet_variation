@@ -3,6 +3,7 @@ import sys
 import os
 import glob
 from matplotlib import pyplot as plt
+from matplotlib import rc
 import numpy as np
 import argparse
 
@@ -39,7 +40,7 @@ def extract_f_s21_df(in_df):
     return x, y
 
 def get_csv_dir(in_dir):
-    csvs = glob.glob(in_dir + '*.csv')
+    csvs = sorted(glob.glob(in_dir + '*.csv'))
     return csvs
 
 def check_dir(in_dir):
@@ -72,7 +73,7 @@ def gen_labels(n_files):
     points = np.linspace(args.min, args.max, n_files, args.endpoint)
     labels = []
     for point in points:
-        labels.append(str(point)+'_'+str(args.unit))
+        labels.append(str(point)+' pH/sq')#+str(args.unit))
 
     return labels
 
@@ -86,10 +87,15 @@ def plot_dfs(dfs):
 
     for i in range(n_files):
         x, y = extract_f_s21_df(dfs[i])
-
-        plt.plot(x, y, label=labels[i], linestyle="-", color=colors[i])
-    plt.xlabel(args.x_column)
-    plt.ylabel(args.y_column)
+        try:
+            plt.plot(x, y, label=labels[i], linestyle="-", color=colors[i])
+        except ValueError:
+            print("Unable to plot" + str(i))
+    plt.xlabel(args.x_column, fontsize=16)
+    plt.ylabel(args.y_column, fontsize=16)
+    plt.yscale('log')
+    plt.xticks(fontsize=12)
+    plt.yticks(fontsize=12)
     plt.title("Plot of "+args.x_column+" vs. "+args.y_column+" for "+str(n_files)+" values of "+args.unit)
     plt.legend()
     if args.save:
