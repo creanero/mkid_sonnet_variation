@@ -235,14 +235,28 @@ def set_args():
     out_args = parser.parse_args()
     return out_args
 
+
 def main():
+    """
+    Checks if the user has selected to iteratively generate MKIDs, and calls the function to generate
+    one or many based on that choice
+    :return:
+    """
+    # no iterations selected
     if args.iter == "None":
+        # generate the contents of an MKID geometry
         content = gen_text()
+        # writes it to an output file
         write_son(content)
+    # some non-zero number of iterations selected
     else:
+        # generates multiple MKID geometries.
         gen_iter()
 
+
 if __name__ == '__main__':
+    # Gets the arguments from the command line
     args = set_args()
+    # Executes the main function.
     main()
 
