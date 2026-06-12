@@ -93,7 +93,7 @@ def gen_base_polygons():
 def gen_fingers():
     # fingers_string = file_read(os.path.expanduser('templates/fingers_27.son'))
     fingers_string = '\n'
-    # ensure this is an integer - quickfix, put into check_arguments() when developed
+    # TODO: ensure this is an integer - quickfix, put into check_arguments() when developed
     num_fingers = int(args.num_fingers)
     finger_length = args.length
     finger_thickness = args.thick
