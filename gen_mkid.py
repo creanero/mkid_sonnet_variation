@@ -118,6 +118,11 @@ def gen_safe_scale(size, scale_factor):
 
 
 def gen_backing():
+    """
+    Generates the backing text from a template file. This defines the substrate and some other parameters
+    :return:
+    """
+    # TODO: identify ways to improve on this
     backing_text = '\n' + file_read(os.path.expanduser('templates/backing.son'))
     return backing_text
 
