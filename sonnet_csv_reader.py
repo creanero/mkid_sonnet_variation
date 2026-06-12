@@ -19,19 +19,19 @@ def read_one(filename):
     out_df = pd.read_csv(filename, header=[1])
     return out_df
 
-def extract_f_s21_df(in_df):
 
+def extract_f_s21_df(in_df):
     # tries to read the x column from the dataframe
     try:
-        x=in_df[args.x_column]
+        x = in_df[args.x_column]
     # if it fails, sets x to empty list
     except KeyError:
         print("Warning: column '" + args.x_column + "' not found in the dataframe")
-        x=[]
+        x = []
 
     # tries to read the y column from the dataframe
     try:
-        y=in_df[args.y_column]
+        y = in_df[args.y_column]
     # if it fails, sets y to empty list
     except KeyError:
         print("Warning: column '" + args.y_column + "' not found in the dataframe")
@@ -44,9 +44,11 @@ def extract_f_s21_df(in_df):
     # returns the columns or empty list
     return x, y
 
+
 def get_csv_dir(in_dir):
     csvs = sorted(glob.glob(in_dir + '*.csv'))
     return csvs
+
 
 def check_dir(in_dir):
     if os.path.isdir(in_dir):
@@ -54,6 +56,7 @@ def check_dir(in_dir):
     else:
         raise IOError
     return out_dir
+
 
 def get_dir_args():
     in_dir = args.dir
@@ -66,6 +69,7 @@ def get_dir_args():
     #     print("Invalid number of arguments. Defaulting to current working directory.")
     return out_dir
 
+
 def get_dfs():
     in_dir = get_dir_args()
     csvs = get_csv_dir(in_dir)
@@ -74,14 +78,14 @@ def get_dfs():
         dfs.append(read_one(csv))
     return dfs
 
+
 def gen_labels(n_files):
     points = np.linspace(args.min, args.max, n_files, args.endpoint)
     labels = []
     for point in points:
-        labels.append(str(point)+' pH/sq')#+str(args.unit))
+        labels.append(str(point) + ' pH/sq')  # +str(args.unit))
 
     return labels
-
 
 
 def plot_dfs(dfs):
@@ -101,13 +105,14 @@ def plot_dfs(dfs):
     plt.yscale('log')
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
-    plt.title("Plot of "+args.x_column+" vs. "+args.y_column+" for "+str(n_files)+" values of "+args.unit)
+    plt.title("Plot of " + args.x_column + " vs. " + args.y_column + " for " + str(n_files) + " values of " + args.unit)
     plt.legend()
     if args.save:
         plt.savefig(get_out_filename("curves"))
         plt.close()
     else:
         plt.show()
+
 
 def get_out_filename(suffix, file_type=None):
     if file_type is None:
@@ -118,6 +123,7 @@ def get_out_filename(suffix, file_type=None):
                                                 suffix + '.' + file_type)
     return out_path
 
+
 def plot_mins(dfs):
     n_files = len(dfs)
     x = np.linspace(args.min, args.max, n_files, args.endpoint)
@@ -127,26 +133,28 @@ def plot_mins(dfs):
     plt.plot(x, y)
     plt.xlabel(args.unit)
     plt.ylabel(args.x_column)
-    plt.title("Plot of the minima in "+args.x_column+" against "+args.unit)
+    plt.title("Plot of the minima in " + args.x_column + " against " + args.unit)
     if args.save:
         plt.savefig(get_out_filename("mins"))
         plt.close()
-        out_dict={args.unit:x, args.x_column:y}
-        out_df=pd.DataFrame(out_dict)
+        out_dict = {args.unit: x, args.x_column: y}
+        out_df = pd.DataFrame(out_dict)
         out_df.to_csv(get_out_filename("mins", file_type="csv"))
     else:
         plt.show()
 
+
 def get_mins(dfs):
-    mins=[]
+    mins = []
     for df in dfs:
         # gets the index of the local minimum of the y column
-        min_y=df[args.y_column].idxmin()
+        min_y = df[args.y_column].idxmin()
         # gets the value of the x variable that corresponds to the minimum in y
         x_at_y_min = df[args.x_column][min_y]
         # adds that x value to the collection
         mins.append(x_at_y_min)
     return mins
+
 
 def set_args():
     parser = argparse.ArgumentParser()
@@ -154,18 +162,22 @@ def set_args():
     plot_options = ["curves", "both", "mins"]
     file_types = ["png", "jpg", "jpeg", "pdf"]
     parser.add_argument("dir", help="Directory containing csv files")
-    parser.add_argument("-x", "--x_column", help="Sonnet output column containing the x coordinates", default="Frequency (GHz)")
-    parser.add_argument("-y", "--y_column", help="Sonnet output column containing the y coordinates", default="MAG[S21]")
+    parser.add_argument("-x", "--x_column", help="Sonnet output column containing the x coordinates",
+                        default="Frequency (GHz)")
+    parser.add_argument("-y", "--y_column", help="Sonnet output column containing the y coordinates",
+                        default="MAG[S21]")
     parser.add_argument("-s", "--save", help="Path to save the plots", default=None)
     parser.add_argument("-u", "--unit", help="Units varied in the directory", choices=unit_varied, default="ph_sq")
     parser.add_argument("-m", "--min", help="Minimum value of variable", default=1.0, type=float)
     parser.add_argument("-M", "--max", help="Maximum value of variable", default=4.0, type=float)
-    parser.add_argument("-e", "--endpoint", help="Whether to remove the maximum value", action='store_false', default=True)
+    parser.add_argument("-e", "--endpoint", help="Whether to remove the maximum value", action='store_false',
+                        default=True)
     parser.add_argument("-N", "--n_plots", help="Select which plots to show", default="both", choices=plot_options)
     parser.add_argument("-T", "--type", help="Select file type to save output files", default="png", choices=file_types)
 
     out_args = parser.parse_args()
     return out_args
+
 
 def main():
     dfs = get_dfs()
@@ -174,6 +186,7 @@ def main():
     if args.n_plots in ["both", "mins"]:
         plot_mins(dfs)
     pass
+
 
 if __name__ == '__main__':
     args = set_args()

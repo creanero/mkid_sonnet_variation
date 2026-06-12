@@ -9,9 +9,11 @@ cap_y_min = 186.0
 cap_x_max = 476.0
 cap_y_max = 316.0
 
+
 def gen_preamble():
     preamble_text = file_read(os.path.expanduser('templates/head_dim_control.son'))
     return preamble_text
+
 
 def gen_geometry():
     geometry_text = "\nGEO"
@@ -22,16 +24,19 @@ def gen_geometry():
     geometry_text = geometry_text + '\nEND GEO'
     return geometry_text
 
+
 def gen_met():
     met_text = '\n' + file_read(os.path.expanduser('templates/met_p1.son'))
     met_text = met_text + gen_ls_line()
     met_text = met_text + '\n' + file_read(os.path.expanduser('templates/met_p2.son'))
     return met_text
 
+
 def gen_ls_line():
     base_text = 'MET "superconductor" 1 SUP 0 0 0 '
     out_text = '\n' + base_text + str(args.ls)
     return out_text
+
 
 def gen_backing():
     backing_text = '\n' + file_read(os.path.expanduser('templates/backing.son'))
@@ -58,6 +63,7 @@ def gen_scale_line():
                 trail_text)
     return out_text
 
+
 def gen_safe_scale(size, scale_factor):
     dec_size = decimal.Decimal(str(size))
     dec_scale_factor = decimal.Decimal(str(scale_factor))
@@ -75,12 +81,14 @@ def gen_polygons():
     num_polygons = num_full_fingers + num_base_polygons
     polygon_text = ('\nNUM ' + str(num_polygons) +
                     '\n' + base_polygon_string +
-                    '\n' + fingers_string )
+                    '\n' + fingers_string)
     return polygon_text
+
 
 def gen_base_polygons():
     base_polygon_string = file_read(os.path.expanduser('templates/base_polygons.son'))
     return base_polygon_string
+
 
 def gen_fingers():
     # fingers_string = file_read(os.path.expanduser('templates/fingers_27.son'))
@@ -101,16 +109,17 @@ def gen_fingers():
 
     i = 0
     for i in range(num_fingers):
-        right = bool(i%2)
+        right = bool(i % 2)
         x_min, x_max, y_min, y_max = gen_points(start_points[i], finger_length, right)
-        polygon_name = 100+i
+        polygon_name = 100 + i
         fingers_string = fingers_string + gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name)
 
     # python ranges end at final value. If ever translating this to C-like code, replace i+1 with i
-    right = bool((i+1)%2)
+    right = bool((i + 1) % 2)
     fingers_string = fingers_string + gen_part_finger(end_fingers, right)
 
     return fingers_string
+
 
 def gen_part_finger(y_start, right=True):
     # part_finger_string = file_read(os.path.expanduser('templates/incomplete_finger_28.son')
@@ -121,6 +130,7 @@ def gen_part_finger(y_start, right=True):
     polygon_name = 200
     part_finger_string = gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name)
     return part_finger_string
+
 
 def gen_points(y_start, finger_length, right=True):
     finger_thickness = args.thick
@@ -137,7 +147,8 @@ def gen_points(y_start, finger_length, right=True):
 
     return x_min, x_max, y_min, y_max
 
-def gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name = 100):
+
+def gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name=100):
     # header line taken from template
     head = "0 5 0 N {} 1 1 100 100 0 0 0 Y".format(polygon_name)
     # this nomenclature is correct for how sonnet displays the geometry.
@@ -158,6 +169,7 @@ def gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name = 100):
                 "\nEND")
     return out_text
 
+
 def count_substring(in_string, substring):
     counter = 0
     for line in in_string.split('\n'):
@@ -165,9 +177,11 @@ def count_substring(in_string, substring):
             counter += 1
     return counter
 
+
 def gen_tail():
     tail_text = file_read(os.path.expanduser('templates/tail.son'))
     return tail_text
+
 
 def file_read(in_filename):
     in_file = open(in_filename, 'r')
@@ -175,11 +189,13 @@ def file_read(in_filename):
     in_file.close()
     return text
 
+
 def gen_text():
     content = gen_preamble()
     content = content + '\n' + gen_geometry()
     content = content + '\n' + gen_tail()
     return content
+
 
 def write_son(content):
     out_path = check_path(args.save)
@@ -187,6 +203,7 @@ def write_son(content):
     out_file.write(content)
     out_file.close()
     pass
+
 
 def check_path(path):
     # dir_name = os.path.dirname(path)
@@ -196,15 +213,16 @@ def check_path(path):
     #     return path
     # elif
     if args.iter == "None":
-        path=os.path.expanduser(path)
+        path = os.path.expanduser(path)
     else:
         path = os.path.expanduser(path)
         base_path = os.path.splitext(path)[0]
         ext = '.son'
-        suffix = '_'+str(args.iter)+'_'+str(getattr(args, args.iter)).replace('.','_')
-        path=base_path+suffix+ext
+        suffix = '_' + str(args.iter) + '_' + str(getattr(args, args.iter)).replace('.', '_')
+        path = base_path + suffix + ext
         print(path)
     return path
+
 
 def gen_iter():
     start_iter = getattr(args, args.iter)
@@ -215,11 +233,14 @@ def gen_iter():
         content = gen_text()
         write_son(content)
 
+
 def set_args():
     parser = argparse.ArgumentParser()
     parser.add_argument("-l", "--ls", help="Kinetic inductance (pH/sq)", default=5.0, type=float)
-    parser.add_argument("-x", "--x_scale", help="x-scale factor: minimum cell size in micrometres", default=1.0, type=float)
-    parser.add_argument("-y", "--y_scale", help="y-scale factor: minimum cell size in micrometres", default=1.0, type=float)
+    parser.add_argument("-x", "--x_scale", help="x-scale factor: minimum cell size in micrometres", default=1.0,
+                        type=float)
+    parser.add_argument("-y", "--y_scale", help="y-scale factor: minimum cell size in micrometres", default=1.0,
+                        type=float)
     parser.add_argument("-X", "--x_size", help="x-size in micrometres", default=500.0, type=float)
     parser.add_argument("-Y", "--y_size", help="y-size in micrometres", default=500.0, type=float)
     parser.add_argument("-N", "--num_fingers", help="Number of fingers", default=27, type=int)
@@ -259,4 +280,3 @@ if __name__ == '__main__':
     args = set_args()
     # Executes the main function.
     main()
-
