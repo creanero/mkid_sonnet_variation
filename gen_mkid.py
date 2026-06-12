@@ -225,6 +225,11 @@ def check_path(path):
 
 
 def gen_iter():
+    """
+    Uses the start point, end point and count of steps to generate a range to iterate over
+    Then iterates through that range, generating content and writing it to a .son file.
+    :return:
+    """
     start_iter = getattr(args, args.iter)
     end_iter = args.end
     iter_range = np.linspace(start_iter, end_iter, args.count)
@@ -235,6 +240,10 @@ def gen_iter():
 
 
 def set_args():
+    """
+    Sets the arguments for the rest of the program using argparse.
+    :return: out_args (a dictionary of the values of the arguments)
+    """
     parser = argparse.ArgumentParser()
     parser.add_argument("-l", "--ls", help="Kinetic inductance (pH/sq)", default=5.0, type=float)
     parser.add_argument("-x", "--x_scale", help="x-scale factor: minimum cell size in micrometres", default=1.0,
@@ -276,7 +285,7 @@ def main():
 
 
 if __name__ == '__main__':
-    # Gets the arguments from the command line
+    # Gets the arguments from the command line and stores them globally.
     args = set_args()
     # Executes the main function.
     main()
