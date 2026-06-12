@@ -4,6 +4,8 @@ import decimal
 import numpy as np
 
 # global variables as placeholders
+# These are the corners of the capacitor.
+# TODO: Parameterise these using arg or otherwise
 cap_x_min = 24.0
 cap_y_min = 186.0
 cap_x_max = 476.0
