@@ -222,16 +222,35 @@ def gen_part_finger(y_start, right=True):
 
 
 def gen_points(y_start, finger_length, right=True):
+    """
+    Generates the maximum and minimum X- and Y-coordinates in micrometres
+    :param y_start: Starting point in the Y-direction
+    :param finger_length: length of the capacitor finger
+    :param right: whether it is starting from the right or left of the capacitor
+    :return: (x_min, x_max, y_min, y_max) tuple containing floats with those coordinates
+    """
+
+    # gets the finger thickness from the arguments
+    # TODO: Make this consistent in terms of sourcing data (program arguments vs function arguments)
     finger_thickness = args.thick
+
+    # if it's coming from the right:
     if right:
+        # minimum is the length away from the maximum edge of the capacitor
         x_min = cap_x_max - finger_length
+        # and maximum is at the maximum edge of the capacitor
         x_max = cap_x_max
+    # otherwise, it's coming from the left
     else:
+        # minumum is at the minimum edge of the capacitor
         x_min = cap_x_min
+        # maximum is the length onto the minimum edge of the capacitor
         x_max = cap_x_min + finger_length
 
+    # Y minimum is subtracted from the start point
     # following Sonnet file logic, which is reverse of display logic
     y_min = y_start - finger_thickness
+    # Y maximum is equal to the start point
     y_max = y_start
 
     return x_min, x_max, y_min, y_max
