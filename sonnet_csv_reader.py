@@ -17,6 +17,7 @@ def read_one(filename):
     :param filename: a string containing one file
     :return: a dataframe containing the contents of filename
     """
+    # uses pandas to read the CSV file specified in filename into a dataframe, and specifies that it has a header line.
     out_df = pd.read_csv(filename, header=[1])
     return out_df
 
