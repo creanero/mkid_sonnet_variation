@@ -82,9 +82,9 @@ def get_dir_args():
         # raise a warning
         warning_text = "No directory specified, using current working directory:\n{}".format(out_dir)
         warnings.warn(warning_text)
-    else:
-        # Checks the input directory
-        out_dir = check_dir(in_dir)
+
+    # Checks the input directory
+    out_dir = check_dir(in_dir)
 
     return out_dir
 
