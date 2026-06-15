@@ -151,9 +151,20 @@ def plot_dfs(dfs):
             # plots the datapoints joined with a line and using a label and colour as specified
             plt.plot(x, y, label=labels[i], linestyle="-", color=colors[i])
         # if there is a problem with plotting
-        except ValueError:
+        except ValueError:  # x and y are incompatible with plotting
             # issue a warning
-            print("Unable to plot" + str(i))
+            warning_message = "\nUnable to plot dataframe {}" \
+                              "\n\t{}" \
+                              "\n\t{} and {} columns are incompatible." \
+                              "".format(str(i), labels[i], args.x_column, args.y_column)
+            warnings.warn(warning_message)
+        except RuntimeError:  # probably latex not available
+            # issue a warning
+            warning_message = "\nUnable to plot dataframe {}" \
+                              "\n\t{}" \
+                              "\n\tFailed to process string with tex because latex could not be found!" \
+                              "".format(str(i), labels[i])
+            warnings.warn(warning_message)
 
     # Set the font size on the x and y labels and tickmarks
     plt.xlabel(args.x_column, fontsize=16)
