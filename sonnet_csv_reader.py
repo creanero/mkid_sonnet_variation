@@ -6,6 +6,7 @@ from matplotlib import pyplot as plt
 from matplotlib import rc
 import numpy as np
 import argparse
+import warnings
 
 from pygments.lexer import default
 
@@ -71,7 +72,8 @@ def get_dir_args():
     # if the input directory isn't specified
     if in_dir is None:
         # raise a warning
-        print("No directory specified, using current working directory:\n{}".format(out_dir))
+        warning_text = "No directory specified, using current working directory:\n{}".format(out_dir)
+        warnings.warn(warning_text)
     else:
         # Checks the input directory
         out_dir = check_dir(in_dir)
