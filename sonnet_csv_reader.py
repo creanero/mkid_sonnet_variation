@@ -216,8 +216,18 @@ def plot_dfs(dfs):
 
 
 def get_out_filename(suffix, file_type=None):
+    """
+    Generates the output filename for the saved plots
+    :param suffix: a string to include in the file name to make it recognisable
+    :param file_type: the file type to save the plot in
+    :return:
+    """
+    # gets the file type from the arguments unless specified in the function call
     if file_type is None:
         file_type = args.type
+
+    # generates the output file path from a combination of the args.save directory
+    # and the variable and range of values it relates to
     out_path = os.path.expanduser(args.save) + ('var_' + args.unit + '_' +
                                                 str(args.min) + '-' +
                                                 str(args.max) + '_' +
