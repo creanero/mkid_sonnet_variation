@@ -118,10 +118,24 @@ def get_dfs():
 
 
 def gen_labels(n_files):
+    """
+    Generates labels for the plots, one per file, based on arguments
+    :param n_files:
+    :return:
+    """
+    # creates a linearly spaced array n_files long from the input minimum to the maximum
+    # whether args.max is included or not depends on args.endpoint
+    # these are the numerical values of the variables each file relates to
     points = np.linspace(args.min, args.max, n_files, args.endpoint)
+
+    # creates an empty list of labels
     labels = []
+
+    # for each point
     for point in points:
-        labels.append(str(point) + ' pH/sq')  # +str(args.unit))
+        # add a label to the list for the numerical value and the units from the arguments
+        # TODO: implement a "pretty" version of the unit name
+        labels.append(str(point) + str(args.unit))
 
     return labels
 
