@@ -382,12 +382,22 @@ def check_path(path):
     if args.iter == "None":
         path = os.path.expanduser(path)
     else:
+        # expands the provided path with ~ replaced with environment-specific values
         path = os.path.expanduser(path)
+        # gets the base of the path provided, removing any extension
         base_path = os.path.splitext(path)[0]
+        # string for the sonnet extension
         ext = '.son'
-        suffix = '_' + str(args.iter) + '_' + str(getattr(args, args.iter)).replace('.', '_')
+        # HACK: this still isn't very extensible, but it's better than it was
+        # gets the parameter being iterated over
+        varying_parameter = str(args.iter)
+        # gets the current value of that parameter and replaces '.' with '_' to avoid issues with extensions
+        current_value = str(getattr(args, args.iter)).replace('.', '_')
+        # creates a path suffix consisting of the parameter and its value
+        suffix = '_' + varying_parameter + '_' + current_value
+        # combines these into a path
         path = base_path + suffix + ext
-        print(path)
+
     return path
 
 
