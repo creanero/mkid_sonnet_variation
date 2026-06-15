@@ -180,14 +180,26 @@ def set_args():
 
 
 def main():
+    """
+    main function for reading and plotting Sonnet CSV outputs
+    :return:
+    """
+    # gets the dataframes from the files
     dfs = get_dfs()
+    # if the user has selected to plot the data curves directly
     if args.n_plots in ["both", "curves"]:
+        # plots the contents of the dataframes
         plot_dfs(dfs)
+    # if the user has selected to plot the minima
     if args.n_plots in ["both", "mins"]:
+        # plots the trends in the minima
         plot_mins(dfs)
     pass
 
 
 if __name__ == '__main__':
+    # Gets the arguments using argparse
+    # args becomes a global variable
     args = set_args()
+    # runs the main function
     main()
