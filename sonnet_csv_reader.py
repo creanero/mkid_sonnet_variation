@@ -282,7 +282,15 @@ def plot_mins(dfs):
 
 
 def get_mins(dfs):
+    """
+    Gets a list of the minima in a dataframe
+    :param dfs: A list of zero or more dataframes
+    :return: mins, a list of floats containing the minimum value of each y column
+    """
+    # creates an empty list
     mins = []
+
+    # for each dataframe in the list of dataframes
     for df in dfs:
         # gets the index of the local minimum of the y column
         min_y = df[args.y_column].idxmin()
