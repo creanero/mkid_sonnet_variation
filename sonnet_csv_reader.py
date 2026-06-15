@@ -157,24 +157,48 @@ def get_mins(dfs):
 
 
 def set_args():
+    """
+    Sets the arguments using argparse
+    :return:
+    """
     parser = argparse.ArgumentParser()
+    # LISTS OF OPTIONS
+    # sets up the lists of possible options for variable
     unit_varied = ["ph_sq", "um_R", "um_L", "um_B"]
+    # sets up the options of what to plot
     plot_options = ["curves", "both", "mins"]
+    # sets up the options for file type to save the output plots as
     file_types = ["png", "jpg", "jpeg", "pdf"]
+
+    # INPUTS
+    # adds the option for the directory containing input files
     parser.add_argument("dir", help="Directory containing csv files")
-    parser.add_argument("-x", "--x_column", help="Sonnet output column containing the x coordinates",
-                        default="Frequency (GHz)")
-    parser.add_argument("-y", "--y_column", help="Sonnet output column containing the y coordinates",
-                        default="MAG[S21]")
-    parser.add_argument("-s", "--save", help="Path to save the plots", default=None)
+    # sets the units that are varied in the input files
     parser.add_argument("-u", "--unit", help="Units varied in the directory", choices=unit_varied, default="ph_sq")
+    # specifies the minimum and maximum values of that variable
     parser.add_argument("-m", "--min", help="Minimum value of variable", default=1.0, type=float)
     parser.add_argument("-M", "--max", help="Maximum value of variable", default=4.0, type=float)
+    # specifies whether the max value is included or not
     parser.add_argument("-e", "--endpoint", help="Whether to remove the maximum value", action='store_false',
                         default=True)
+
+    # PLOTS
+    # adds the option for the user to select the variable to plot on the x-axis
+    parser.add_argument("-x", "--x_column", help="Sonnet output column containing the x coordinates",
+                        default="Frequency (GHz)")
+    # adds the option for the user to select the variable to plot on the y-axis
+    parser.add_argument("-y", "--y_column", help="Sonnet output column containing the y coordinates",
+                        default="MAG[S21]")
+    # adds the option for the user to select between various options to plot
     parser.add_argument("-N", "--n_plots", help="Select which plots to show", default="both", choices=plot_options)
+
+    # OUTPUTS
+    # sets the path to save the output plot(s) in.
+    parser.add_argument("-s", "--save", help="Path to save the plots", default=None)
+    # sets the file type for the output plots
     parser.add_argument("-T", "--type", help="Select file type to save output files", default="png", choices=file_types)
 
+    # actually parses the arguments
     out_args = parser.parse_args()
     return out_args
 
