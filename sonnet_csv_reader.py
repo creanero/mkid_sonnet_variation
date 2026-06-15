@@ -47,6 +47,12 @@ def extract_f_s21_df(in_df):
 
 
 def get_csv_dir(in_dir):
+    """
+    Gets a sorted list of all of the CSV files in the input directory
+    :param in_dir:
+    :return: a (possibly empty) list of all CSV files in the specified directory
+    """
+    # gets the paths to all CSV files in in_dir and sorts it alphabetically
     csvs = sorted(glob.glob(in_dir + '*.csv'))
     return csvs
 
