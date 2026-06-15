@@ -366,6 +366,12 @@ def write_son(content):
 
 
 def check_path(path):
+    """
+    This function expands the input path to something that can be used for file I/O.
+    It does not check if the path exists.
+    :param path:
+    :return:
+    """
     # dir_name = os.path.dirname(path)
     # if os.path.isdir(dir_name):
     #     return path + "/mkid.son"
