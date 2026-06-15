@@ -315,6 +315,12 @@ def count_substring(in_string, substring):
 
 
 def gen_tail():
+    """
+    Adds the tail content (OPT, VarSweep, Sonnet output file, and Translator for GDS Export) to the string
+    :return:
+    """
+    # reads the tail content from the template
+    # TODO: sepatate out the OPT, VarSweep, Sonnet output file, and Translator components and make these variable
     tail_text = file_read(os.path.expanduser('templates/tail.son'))
     return tail_text
 
