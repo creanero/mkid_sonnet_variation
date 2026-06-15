@@ -289,10 +289,28 @@ def gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name=100):
 
 
 def count_substring(in_string, substring):
+    """
+    Count the instances of substring on a unique line in in_string
+    :param in_string: a string to search through
+    :param substring: a string to search for
+    :return:int the count of substrings
+    """
+    # TODO: (low priority) test if the builtin in_string.count(substring) would work here
+    #       see if there are any efficiency gains to be made.
+    #       Possible implementation in_string.count('\n' + substring + '\n')?
+    #       Query: how would the count builtin handle consecutive lines with substring?
+
+    # starts a counter
     counter = 0
+
+    # splits in_string into lines using '\n'
     for line in in_string.split('\n'):
+        # checks each line to see if it matches the substring
         if line == substring:
+            # increments the counter
             counter += 1
+
+    # returns the count of substrings
     return counter
 
 
