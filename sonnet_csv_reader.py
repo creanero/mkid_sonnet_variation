@@ -127,28 +127,56 @@ def gen_labels(n_files):
 
 
 def plot_dfs(dfs):
+    """
+    Plots the X and Y variables of each of the dataframes as overlaid plots
+    :param dfs: a list containing zero or more dataframes
+    :return:
+    """
+    # gets the number of dataframes in the list
     n_files = len(dfs)
+    # creates a set of colours using the jet colourmap
     colors = plt.cm.jet(np.linspace(0, 1, n_files))
+    # generates the labels for each of the files
     labels = gen_labels(n_files)
+
+    # creates the plot
     plt.figure()
 
+    # iterates over the number of files
     for i in range(n_files):
+        # gets the x and y coordinates from the dataframe
         x, y = extract_f_s21_df(dfs[i])
+        # tries to plot them
         try:
+            # plots the datapoints joined with a line and using a label and colour as specified
             plt.plot(x, y, label=labels[i], linestyle="-", color=colors[i])
+        # if there is a problem with plotting
         except ValueError:
+            # issue a warning
             print("Unable to plot" + str(i))
+
+    # Set the font size on the x and y labels and tickmarks
     plt.xlabel(args.x_column, fontsize=16)
     plt.ylabel(args.y_column, fontsize=16)
-    plt.yscale('log')
     plt.xticks(fontsize=12)
     plt.yticks(fontsize=12)
+
+    # make the Y-axis logarithmic in scale this was a recommendation from the paper referee
+    # TODO: make this an option in the arguments
+    plt.yscale('log')
+
+    # Put a title and legend on the plot
     plt.title("Plot of " + args.x_column + " vs. " + args.y_column + " for " + str(n_files) + " values of " + args.unit)
     plt.legend()
+
+    # if the user has requested that the plot be saved to disk
     if args.save:
+        # save the figure using a generated filename
         plt.savefig(get_out_filename("curves"))
+        # close the plot gracefully
         plt.close()
-    else:
+    else:  # no output directory is specified
+        # show the plot in the interactive interface
         plt.show()
 
 
