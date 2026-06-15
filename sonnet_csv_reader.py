@@ -60,9 +60,10 @@ def check_dir(in_dir):
     # checks if in_dir is a currently existing directory
     if os.path.isdir(in_dir):
         out_dir: str = in_dir
-    # if it isn't, raise an IOError here
+    # if it isn't, exit with an informative message
     else:
-        raise IOError
+        exit_message = "Input directory:\n\t{}\n does not exist".format(in_dir)
+        sys.exit(exit_message)
     return out_dir
 
 
