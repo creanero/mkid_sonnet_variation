@@ -257,7 +257,17 @@ def gen_points(y_start, finger_length, right=True):
 
 
 def gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name=100):
+    """
+    Generates a sonnet rectangle based on the coordinates provided
+    :param x_min:float Minimum x-coordinate in micrometres
+    :param x_max:float Maximum x-coordinate in micrometres
+    :param y_min:float Minimum y-coordinate in micrometres
+    :param y_max:float Maximum y-coordinate in micrometres
+    :param polygon_name:int A unique identifier for each polygon
+    :return:str Containing the sonnet formtted code for the rectangle
+    """
     # header line taken from template
+    # TODO: (Low priority) parameterise this line - find out function of each element.
     head = "0 5 0 N {} 1 1 100 100 0 0 0 Y".format(polygon_name)
     # this nomenclature is correct for how sonnet displays the geometry.
     # The indices Sonnet displays in the editor count from bottom left
@@ -267,7 +277,7 @@ def gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name=100):
     bottom_right = "{} {}".format(x_max, y_max)
     bottom_left = "{} {}".format(x_min, y_max)
 
-    # the representation of a polygon in sonnet is as a loop
+    # the representation of a polygon in sonnet is as a loop, so the start point is repeated
     out_text = ('\n' + head +
                 '\n' + top_left +
                 '\n' + top_right +
