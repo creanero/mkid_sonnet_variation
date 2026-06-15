@@ -22,7 +22,7 @@ def read_one(filename):
     return out_df
 
 
-def extract_f_s21_df(in_df):
+def extract_x_y_df(in_df):
     # tries to read the x column from the dataframe
     try:
         x = in_df[args.x_column]
@@ -160,7 +160,7 @@ def plot_dfs(dfs):
     # iterates over the number of files
     for i in range(n_files):
         # gets the x and y coordinates from the dataframe
-        x, y = extract_f_s21_df(dfs[i])
+        x, y = extract_x_y_df(dfs[i])
 
         # TODO: split this out, it's far too big to be in one function
         # tries to plot them
