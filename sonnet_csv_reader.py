@@ -176,6 +176,7 @@ def plot_dfs(dfs):
                               "".format(str(i), labels[i], args.x_column, args.y_column)
             warnings.warn(warning_message)
         except RuntimeError:  # probably latex not available
+            # TODO: revert the rcParams argument and try again to fix this error
             # issue a warning
             warning_message = "\nUnable to plot dataframe {}" \
                               "\n\t{}" \
