@@ -52,8 +52,15 @@ def get_csv_dir(in_dir):
 
 
 def check_dir(in_dir):
+    """
+    Checks if the input directory exists, and raises an error if it does not
+    :param in_dir: a string that should specify a directory containing CSV files
+    :return:
+    """
+    # checks if in_dir is a currently existing directory
     if os.path.isdir(in_dir):
         out_dir: str = in_dir
+    # if it isn't, raise an IOError here
     else:
         raise IOError
     return out_dir
