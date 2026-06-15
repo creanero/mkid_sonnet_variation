@@ -326,6 +326,12 @@ def gen_tail():
 
 
 def file_read(in_filename):
+    """
+    Reads in the contents of in_filename and returns the contents as a string
+    :param in_filename:
+    :return:
+    """
+    # TODO: Add try/Except blocks to handle exceptions here.
     in_file = open(in_filename, 'r')
     text = in_file.read()
     in_file.close()
