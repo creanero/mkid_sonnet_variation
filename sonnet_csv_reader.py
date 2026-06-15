@@ -71,11 +71,23 @@ def get_dir_args():
 
 
 def get_dfs():
+    """
+    Gets the dataframes from the CSV files in the directories specified in the arguments
+    :return: a list of data frames containing the data from the CSV files
+    """
+    # gets the input directory specified in the arguments
     in_dir = get_dir_args()
+    # gets a list of the CSV files specified in the input directory
     csvs = get_csv_dir(in_dir)
+    # creates an empty list of dataframes
     dfs = []
+
+    # for each CSV file in the list of CSV files from the input directory
     for csv in csvs:
+        # read the contents of the CSV file, and append it to the list of dataframes
         dfs.append(read_one(csv))
+
+    # return the list of dataframes
     return dfs
 
 
