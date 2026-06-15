@@ -132,6 +132,7 @@ def plot_dfs(dfs):
     :param dfs: a list containing zero or more dataframes
     :return:
     """
+    # TODO: split this function up
     # gets the number of dataframes in the list
     n_files = len(dfs)
     # creates a set of colours using the jet colourmap
@@ -146,6 +147,8 @@ def plot_dfs(dfs):
     for i in range(n_files):
         # gets the x and y coordinates from the dataframe
         x, y = extract_f_s21_df(dfs[i])
+
+        # TODO: split this out, it's far too big to be in one function
         # tries to plot them
         try:
             # plots the datapoints joined with a line and using a label and colour as specified
@@ -167,6 +170,7 @@ def plot_dfs(dfs):
             warnings.warn(warning_message)
 
     # Set the font size on the x and y labels and tickmarks
+    # TODO: (low priority) make these font sizes variable by user
     plt.xlabel(args.x_column, fontsize=16)
     plt.ylabel(args.y_column, fontsize=16)
     plt.xticks(fontsize=12)
