@@ -236,22 +236,48 @@ def get_out_filename(suffix, file_type=None):
 
 
 def plot_mins(dfs):
+    """
+    Finds and plots the x-coordinate of the local minima in y for each of the files in dfs
+    :param dfs: a list of dataframes containing the data read in from each CSV file
+    :return:
+    """
+    # TODO: split this up and make it more tractable
+    # gets the number of dataframes in the list
     n_files = len(dfs)
+    # creates a linearly spaced array n_files long from the input minimum to the maximum
+    # whether args.max is included or not depends on args.endpoint
+    # these are the numerical values of the variables each file relates to
     x = np.linspace(args.min, args.max, n_files, args.endpoint)
+    # gets the minima in the dataframes
     y = get_mins(dfs)
 
+    # creates the plot
     plt.figure()
+
+    # plots the minima against the variables from the files
     plt.plot(x, y)
+
+    # adds labels to the x and y axes
     plt.xlabel(args.unit)
     plt.ylabel(args.x_column)
+
+    # adds the title to the plot
     plt.title("Plot of the minima in " + args.x_column + " against " + args.unit)
+
+    # if the user has requested that the plot be saved to disk
     if args.save:
+        # save the figure using a generated filename
         plt.savefig(get_out_filename("mins"))
+        # close the plot gracefully
         plt.close()
+        # create a dictionary with correct key-value pairs
         out_dict = {args.unit: x, args.x_column: y}
+        # turns that dictionary into a dataframe
         out_df = pd.DataFrame(out_dict)
+        # saves that dataframe to CSV
         out_df.to_csv(get_out_filename("mins", file_type="csv"))
     else:
+        # show the plot in the interactive interface
         plt.show()
 
 
