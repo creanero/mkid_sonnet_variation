@@ -23,6 +23,11 @@ def read_one(filename):
 
 
 def extract_x_y_df(in_df):
+    """
+    Extracts the x and y columns specified in args from the dataframe in_df
+    :param in_df:
+    :return: (x,y) a tuple containing the array/list of values for x and y
+    """
     # tries to read the x column from the dataframe
     try:
         x = in_df[args.x_column]
