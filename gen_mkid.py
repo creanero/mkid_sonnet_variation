@@ -201,12 +201,22 @@ def gen_fingers():
 
 
 def gen_part_finger(y_start, right=True):
+    """
+    Generates the partial finger at the end of the capacitor.
+    :param y_start: Starting point in the Y direction in micrometres
+    :param right: Whether this finger is starting from the right side of the capacitor walls
+    :return: A string containing the .son code for the partial finger
+    """
     # part_finger_string = file_read(os.path.expanduser('templates/incomplete_finger_28.son')
     finger_length = args.final
 
+    # generates the X and Y coordinates for the polygon
     x_min, x_max, y_min, y_max = gen_points(y_start, finger_length, right)
 
+    # sets the polygon name to 200
+    # TODO: merge this number to the sequence with the whole fingers
     polygon_name = 200
+    # Generates a rectangle (polygon) with those coordinates.
     part_finger_string = gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name)
     return part_finger_string
 
