@@ -59,14 +59,23 @@ def check_dir(in_dir):
 
 
 def get_dir_args():
+    """
+    Gets and checks the directory specified in the arguments
+    :return:
+    """
+    # Gets the input directory specified in the arguments
     in_dir = args.dir
+    # sets the current working directory as a default value to return if the input directory isn't specified
     out_dir = os.getcwd()
+
+    # if the input directory isn't specified
     if in_dir is None:
-        print("No directory specified, using current working directory.")
+        # raise a warning
+        print("No directory specified, using current working directory:\n{}".format(out_dir))
     else:
+        # Checks the input directory
         out_dir = check_dir(in_dir)
-    # else:
-    #     print("Invalid number of arguments. Defaulting to current working directory.")
+
     return out_dir
 
 
