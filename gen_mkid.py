@@ -1,6 +1,7 @@
 import argparse
 import os
 import decimal
+from socket import gaierror
 import numpy as np
 
 # global variables as placeholders
@@ -132,34 +133,68 @@ def gen_polygons():
     Generates the polygons that form the foreground circuit
     :return:
     """
-    # Generate the base circuit (this includes the ground plane and inductor)
-    base_polygon_string = gen_base_polygons()
+    # Generate the ground plane
+    ground_plane_string = gen_ground_plane()
 
-    # Generates the capacitor fingers
-    fingers_string = gen_fingers()
+    # Generate the inductor
+    inductor_string = gen_inductor()
+
+    # Generates the capacitor 
+    capacitor_string = gen_capacitor()
 
     # Combines the base and fingers strings
-    polygon_string = base_polygon_string + '\n' + fingers_string
+    polygon_string = ground_plane_string + '\n' + inductor_string + '\n' + capacitor_string
+
     # Counts the polygons in the string using the substring "END"
-    num_polygons = count_substring(base_polygon_string, "END")
-    # num_base_polygons = count_substring(base_polygon_string, "END")
-    # num_fingers = count_substring(fingers_string, "END")
-    # num_polygons = num_fingers + num_base_polygons
+    num_polygons = count_substring(polygon_string, "END")
 
     # Combines the polygons with the count
     polygon_text = ('\nNUM ' + str(num_polygons) + '\n' + polygon_string)
     return polygon_text
 
 
-def gen_base_polygons():
+def gen_ground_plane():
     """
-    Generate the base circuit (this includes the ground plane and inductor)
-    :return:
+    Generate the ground plane polygon. This is read from a template file.
+    :return: ground_plane_string (string containing the .son code for the ground plane)
     """
-    # reads ground plane and inductor from a template file
-    # TODO separate out the ground plane and inductor, and parameterise them
-    base_polygon_string = file_read(os.path.expanduser('templates/base_polygons.son'))
-    return base_polygon_string
+    # reads ground plane from a template file
+    ground_plane_string = file_read(os.path.expanduser('templates/ground_plane.son'))
+    return ground_plane_string
+
+
+def gen_inductor():
+    """
+    Generate the polygons for the inductor. This is read from a template file.
+    :return: inductor_string (string containing the .son code for the inductor)
+    """
+    # reads inductor from a template file
+    inductor_string = file_read(os.path.expanduser('templates/inductor.son'))
+    return inductor_string
+
+
+def gen_capacitor():
+    """
+    Generate the polygons for the capacitor. This includes the outline of the capacitor and the fingers.
+    :return: capacitor_string (string containing the .son code for the capacitor)
+    """
+    # Generates the outline of the capacitor
+    capacitor_frame_string = gen_capacitor_frame()
+    # Generates the capacitor fingers
+    fingers_string = gen_fingers()
+    # combines these into a single string
+    capacitor_string = capacitor_frame_string + '\n' + fingers_string
+    # returns the string containing the code for the capacitor
+    return capacitor_string
+
+
+def gen_capacitor_frame():
+    """
+    Generate the outline of the capacitor. This is read from a template file.
+    :return: capacitor_frame_string (string containing the .son code for the capacitor outline)
+    """
+    capacitor_frame_string = file_read(os.path.expanduser('templates/capacitor_frame.son'))
+    return capacitor_frame_string
 
 
 def gen_fingers():
