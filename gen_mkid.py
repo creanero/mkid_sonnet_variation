@@ -183,7 +183,7 @@ def gen_capacitor():
     # Generates the capacitor fingers
     fingers_string = gen_fingers()
     # combines these into a single string
-    capacitor_string = capacitor_frame_string + '\n' + fingers_string
+    capacitor_string = capacitor_frame_string + fingers_string
     # returns the string containing the code for the capacitor
     return capacitor_string
 
