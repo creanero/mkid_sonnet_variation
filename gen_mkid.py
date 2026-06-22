@@ -225,7 +225,7 @@ def gen_fingers():
         right = bool(i % 2)
         x_min, x_max, y_min, y_max = gen_points(start_points[i], finger_length, right)
         polygon_name = 100 + i
-        fingers_string = fingers_string + 'n' + gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name)
+        fingers_string = fingers_string + '\n' + gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name)
 
     # python ranges end at final value. If ever translating this to C-like code, replace i+1 with i
     right = bool((i + 1) % 2)
