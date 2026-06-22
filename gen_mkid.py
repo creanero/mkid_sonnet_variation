@@ -30,7 +30,7 @@ def gen_geometry():
     :return: string containing the text for the geometry (circuit)
     """
     # Writes the "open" for the geometry
-    geometry_text = "\nGEO"
+    geometry_text = "GEO"
     # Writes the properties of the "metals" to be used in the circuit (e.g. kinetic inductance per square)
     geometry_text = geometry_text + gen_met()
     # Writes a line explaining the dimensions and grid size to use (checked for floating point errors)
@@ -204,8 +204,7 @@ def gen_fingers():
     """
     # TODO: refactor this function, it's messy and uses deprecated terminology
     # TODO: Implement pitch, separation and breadth terminology
-    # starts the string with a newline
-    fingers_string = '\n'
+    fingers_string = ''
 
     # gets the finger properties from the arguments
     num_fingers = int(args.num_fingers)
@@ -226,7 +225,7 @@ def gen_fingers():
         right = bool(i % 2)
         x_min, x_max, y_min, y_max = gen_points(start_points[i], finger_length, right)
         polygon_name = 100 + i
-        fingers_string = fingers_string + gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name)
+        fingers_string = fingers_string + 'n' + gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name)
 
     # python ranges end at final value. If ever translating this to C-like code, replace i+1 with i
     right = bool((i + 1) % 2)
@@ -313,7 +312,7 @@ def gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name=100):
     bottom_left = "{} {}".format(x_min, y_max)
 
     # the representation of a polygon in sonnet is as a loop, so the start point is repeated
-    out_text = ('\n' + head +
+    out_text = (head +
                 '\n' + top_left +
                 '\n' + top_right +
                 '\n' + bottom_right +
@@ -352,7 +351,7 @@ def count_substring(in_string, substring):
 def gen_tail():
     """
     Adds the tail content (OPT, VarSweep, Sonnet output file, and Translator for GDS Export) to the string
-    :return:
+    :return: tail_text (string containing the tail content for the .son file)
     """
     # reads the tail content from the template
     # TODO: sepatate out the OPT, VarSweep, Sonnet output file, and Translator components and make these variable
@@ -363,7 +362,7 @@ def gen_tail():
 def file_read(in_filename):
     """
     Reads in the contents of in_filename and returns the contents as a string
-    :param in_filename:
+    :param in_filename: string containing the path to the file to be read
     :return:
     """
     # TODO: Add try/Except blocks to handle exceptions here.
