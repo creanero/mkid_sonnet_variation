@@ -432,6 +432,9 @@ def check_path(path):
     # TODO: Make this check if the path is valid, separate out path generation functionality
     if args.iter == "None":
         path = os.path.expanduser(path)
+        if os.path.isdir(dir_name):
+            warnings.warn("The path provided is a directory. The file will be saved as mkid.son in that directory.")
+            path = os.path.join(path, "mkid.son")
     else:
         # expands the provided path with ~ replaced with environment-specific values
         path = os.path.expanduser(path)
