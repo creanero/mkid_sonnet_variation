@@ -229,7 +229,7 @@ def gen_fingers():
 
     # python ranges end at final value. If ever translating this to C-like code, replace i+1 with i
     right = bool((i + 1) % 2)
-    fingers_string = fingers_string + gen_part_finger(end_fingers, right)
+    fingers_string = fingers_string + '\n' + gen_part_finger(end_fingers, right)
 
     return fingers_string
 
