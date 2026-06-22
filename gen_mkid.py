@@ -12,6 +12,23 @@ cap_y_min = 186.0
 cap_x_max = 476.0
 cap_y_max = 316.0
 
+# These relate to the edges of the ground plane.
+
+gp_split = 409.0
+gp_sidebar = 12.0
+
+# these relate to the edges of the transfer bar
+tb_space = 5.0 
+tb_breadth = 35.0
+
+# these relate to the edges of the resonator
+resonator_top = 152.0
+resonator_bottom = resonator_top + 175.0
+
+# polygon name counter, used to give each polygon a unique name
+polygon_name = 100
+
+# TODO: refactor the use of global variables in this code, ideally removing them and replacing with function arguments or class attributes where needed. This will make the code more modular and easier to test.
 
 def gen_preamble():
     """
@@ -159,7 +176,34 @@ def gen_ground_plane():
     :return: ground_plane_string (string containing the .son code for the ground plane)
     """
     # reads ground plane from a template file
-    ground_plane_string = file_read(os.path.expanduser('templates/ground_plane.son'))
+    # ground_plane_string = file_read(os.path.expanduser('templates/ground_plane.son'))
+    ground_plane_string = ""
+
+    # generates the top, bottom and sidebars of the ground plane as rectangles
+    # top bar is from the top of the circuit to the top of the resonator, and spans the whole width of the circuit
+    gp_top_string = gen_sonnet_rectangle(0, args.x_size, 0, resonator_top)
+    # left and right sidebars are from the top of the resonator to the bottom of the resonator, and are gp_sidebar wide
+    resonator_l = gp_sidebar
+    gp_sidebar_string_l = gen_sonnet_rectangle(0, resonator_l, resonator_top, resonator_bottom)
+    resonator_r = args.x_size - gp_sidebar
+    gp_sidebar_string_r = gen_sonnet_rectangle(resonator_r, args.x_size, resonator_top, resonator_bottom)
+    # bottom bar is from the bottom of the resonator and gp_sidebar deep, and spans the whole width of the circuit
+    gp_bottom = resonator_bottom + gp_sidebar
+    gp_bottom_string = gen_sonnet_rectangle(0, args.x_size, resonator_bottom, gp_bottom)
+
+    # transfer bar is tb_breadth deep, with a gap of tb_space from the ground plane, and the whole width of the circuit
+    tb_top = gp_bottom + tb_space
+    tb_bottom = tb_top + tb_breadth
+    tb_string = gen_sonnet_rectangle(0, args.x_size, tb_top, tb_bottom)
+
+    # the ground plane opposite the transfer bar is from the bottom of the transfer bar to the bottom of the circuit, and spans the whole width of the circuit
+    # it is split in two polygons, one from tb_space past the bottom of the transfer bar to gp_split, and one from gp_split to the bottom of the circuit
+    gp_opp = tb_bottom + tb_space
+    gp_opp_string = gen_sonnet_rectangle(0, args.x_size, gp_opp, gp_split)
+    gp_final_string = gen_sonnet_rectangle(0, args.x_size, gp_split, args.y_size)
+
+    # combines these into a single string
+    ground_plane_string = (gp_top_string + '\n' + gp_sidebar_string_l + '\n' + gp_sidebar_string_r + '\n' + gp_bottom_string + '\n' + tb_string + '\n' + gp_opp_string + '\n' + gp_final_string)
     return ground_plane_string
 
 
@@ -241,8 +285,7 @@ def gen_fingers():
     for i in range(num_fingers):
         right = bool(i % 2)
         x_min, x_max, y_min, y_max = gen_points(start_points[i], finger_length, right)
-        polygon_name = 100 + i
-        fingers_string = fingers_string + '\n' + gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name)
+        fingers_string = fingers_string + '\n' + gen_sonnet_rectangle(x_min, x_max, y_min, y_max)
 
     # python ranges end at final value. If ever translating this to C-like code, replace i+1 with i
     right = bool((i + 1) % 2)
@@ -264,11 +307,8 @@ def gen_part_finger(y_start, right=True):
     # generates the X and Y coordinates for the polygon
     x_min, x_max, y_min, y_max = gen_points(y_start, finger_length, right)
 
-    # sets the polygon name to 200
-    # TODO: merge this number to the sequence with the whole fingers
-    polygon_name = 200
     # Generates a rectangle (polygon) with those coordinates.
-    part_finger_string = gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name)
+    part_finger_string = gen_sonnet_rectangle(x_min, x_max, y_min, y_max)
     return part_finger_string
 
 
@@ -307,18 +347,18 @@ def gen_points(y_start, finger_length, right=True):
     return x_min, x_max, y_min, y_max
 
 
-def gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name=100):
+def gen_sonnet_rectangle(x_min, x_max, y_min, y_max):
     """
     Generates a sonnet rectangle based on the coordinates provided
     :param x_min:float Minimum x-coordinate in micrometres
     :param x_max:float Maximum x-coordinate in micrometres
     :param y_min:float Minimum y-coordinate in micrometres
     :param y_max:float Maximum y-coordinate in micrometres
-    :param polygon_name:int A unique identifier for each polygon
     :return:str Containing the sonnet formtted code for the rectangle
     """
     # header line taken from template
     # TODO: (Low priority) parameterise this line - find out function of each element.
+    global polygon_name
     head = "0 5 0 N {} 1 1 100 100 0 0 0 Y".format(polygon_name)
     # this nomenclature is correct for how sonnet displays the geometry.
     # The indices Sonnet displays in the editor count from bottom left
@@ -336,6 +376,11 @@ def gen_sonnet_rectangle(x_min, x_max, y_min, y_max, polygon_name=100):
                 '\n' + bottom_left +
                 '\n' + top_left +
                 "\nEND")
+    
+    # increments the polygon name for the next polygon
+    # TODO: this is a bit hacky, ideally the polygon name would be generated in a more modular way, perhaps by a class that keeps track of the count of polygons and generates unique names as needed.
+    polygon_name = polygon_name + 1  
+
     return out_text
 
 
@@ -432,7 +477,7 @@ def check_path(path):
     # TODO: Make this check if the path is valid, separate out path generation functionality
     if args.iter == "None":
         path = os.path.expanduser(path)
-        if os.path.isdir(dir_name):
+        if os.path.isdir(path):
             warnings.warn("The path provided is a directory. The file will be saved as mkid.son in that directory.")
             path = os.path.join(path, "mkid.son")
     else:
