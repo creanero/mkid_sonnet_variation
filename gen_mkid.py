@@ -2,31 +2,11 @@ import argparse
 import os
 import decimal
 from socket import gaierror
+from tkinter import FIRST
 import numpy as np
 
-# global variables as placeholders
-# These are the corners of the capacitor.
-# TODO: Parameterise these using arg or otherwise
-cap_x_min = 24.0
-cap_y_min = 186.0
-cap_x_max = 476.0
-cap_y_max = 316.0
 
-# These relate to the edges of the ground plane.
 
-gp_split = 409.0
-gp_sidebar = 12.0
-
-# these relate to the edges of the transfer bar
-tb_space = 5.0 
-tb_breadth = 35.0
-
-# these relate to the edges of the resonator
-resonator_top = 152.0
-resonator_bottom = resonator_top + 175.0
-
-# polygon name counter, used to give each polygon a unique name
-polygon_name = 100
 
 # TODO: refactor the use of global variables in this code, ideally removing them and replacing with function arguments or class attributes where needed. This will make the code more modular and easier to test.
 
@@ -172,38 +152,33 @@ def gen_polygons():
 
 def gen_ground_plane():
     """
-    Generate the ground plane polygon. This is read from a template file.
+    Generate the ground plane polygon. This is now procedurally generated based on the arguments and the other polygons, rather than being read from a template file.
     :return: ground_plane_string (string containing the .son code for the ground plane)
     """
-    # reads ground plane from a template file
-    # ground_plane_string = file_read(os.path.expanduser('templates/ground_plane.son'))
-    ground_plane_string = ""
-
     # generates the top, bottom and sidebars of the ground plane as rectangles
     # top bar is from the top of the circuit to the top of the resonator, and spans the whole width of the circuit
     gp_top_string = gen_sonnet_rectangle(0, args.x_size, 0, resonator_top)
     # left and right sidebars are from the top of the resonator to the bottom of the resonator, and are gp_sidebar wide
-    resonator_l = gp_sidebar
-    gp_sidebar_string_l = gen_sonnet_rectangle(0, resonator_l, resonator_top, resonator_bottom)
-    resonator_r = args.x_size - gp_sidebar
+    gp_sidebar_string_l = gen_sonnet_rectangle(0, resonator_left, resonator_top, resonator_bottom)
+    resonator_r = args.x_size - ground_plane_sidebar_breadth
     gp_sidebar_string_r = gen_sonnet_rectangle(resonator_r, args.x_size, resonator_top, resonator_bottom)
     # bottom bar is from the bottom of the resonator and gp_sidebar deep, and spans the whole width of the circuit
-    gp_bottom = resonator_bottom + gp_sidebar
+    gp_bottom = resonator_bottom + ground_plane_sidebar_breadth
     gp_bottom_string = gen_sonnet_rectangle(0, args.x_size, resonator_bottom, gp_bottom)
 
-    # transfer bar is tb_breadth deep, with a gap of tb_space from the ground plane, and the whole width of the circuit
-    tb_top = gp_bottom + tb_space
-    tb_bottom = tb_top + tb_breadth
-    tb_string = gen_sonnet_rectangle(0, args.x_size, tb_top, tb_bottom)
+    # feed line is feed_line_breadth deep, with a gap of feed_line_space from the ground plane, and the whole width of the circuit
+    feed_line_top = gp_bottom + feed_line_space
+    feed_line_bottom = feed_line_top + feed_line_breadth
+    feed_line_string = gen_sonnet_rectangle(0, args.x_size, feed_line_top, feed_line_bottom)
 
-    # the ground plane opposite the transfer bar is from the bottom of the transfer bar to the bottom of the circuit, and spans the whole width of the circuit
-    # it is split in two polygons, one from tb_space past the bottom of the transfer bar to gp_split, and one from gp_split to the bottom of the circuit
-    gp_opp = tb_bottom + tb_space
-    gp_opp_string = gen_sonnet_rectangle(0, args.x_size, gp_opp, gp_split)
-    gp_final_string = gen_sonnet_rectangle(0, args.x_size, gp_split, args.y_size)
+    # the ground plane opposite the feed line spans the whole width of the circuit
+    # it is split in two polygons, one from feed_line_space past the bottom of the feed_line to gp_split, and one from gp_split to the bottom of the circuit
+    gp_opp = feed_line_bottom + feed_line_space
+    gp_opp_string = gen_sonnet_rectangle(0, args.x_size, gp_opp, ground_plane_split)
+    gp_final_string = gen_sonnet_rectangle(0, args.x_size, ground_plane_split, args.y_size)
 
     # combines these into a single string
-    ground_plane_string = (gp_top_string + '\n' + gp_sidebar_string_l + '\n' + gp_sidebar_string_r + '\n' + gp_bottom_string + '\n' + tb_string + '\n' + gp_opp_string + '\n' + gp_final_string)
+    ground_plane_string = (gp_top_string + '\n' + gp_sidebar_string_l + '\n' + gp_sidebar_string_r + '\n' + gp_bottom_string + '\n' + feed_line_string + '\n' + gp_opp_string + '\n' + gp_final_string)
     return ground_plane_string
 
 
@@ -254,7 +229,17 @@ def gen_capacitor_frame():
     Generate the outline of the capacitor. This is read from a template file.
     :return: capacitor_frame_string (string containing the .son code for the capacitor outline)
     """
-    capacitor_frame_string = file_read(os.path.expanduser('templates/capacitor_frame.son'))
+    # capacitor_frame_string = file_read(os.path.expanduser('templates/capacitor_frame.son'))
+    cap_finger_space = args.pitch - args.thick
+    cap_left_bottom = transfer_bar_in - cap_finger_space
+    capacitor_frame_l_string = gen_sonnet_rectangle(cap_left_out, cap_left_in, cap_top_out, cap_left_bottom)
+    capacitor_frame_r_string = gen_sonnet_rectangle(cap_right_in, cap_right_out, cap_top_out, transfer_bar_out)
+    capacitor_top_l_string = gen_sonnet_rectangle(cap_left_in, inductor_junction_start, cap_top_out, cap_top_in)
+    capacitor_top_r_string = gen_sonnet_rectangle(inductor_junction_end, cap_right_in, cap_top_out, cap_top_in)
+    transfer_bar_string = gen_sonnet_rectangle(transfer_bar_end, cap_right_in, transfer_bar_in, transfer_bar_out)
+    
+    # combines these into a single string
+    capacitor_frame_string = (capacitor_frame_l_string + '\n' + capacitor_frame_r_string + '\n' + capacitor_top_l_string + '\n' + capacitor_top_r_string + '\n' + transfer_bar_string)
     return capacitor_frame_string
 
 
@@ -264,22 +249,24 @@ def gen_fingers():
     :return:
     """
     # TODO: refactor this function, it's messy and uses deprecated terminology
-    # TODO: Implement pitch, separation and breadth terminology
     fingers_string = ''
 
     # gets the finger properties from the arguments
     num_fingers = int(args.num_fingers)
     finger_length = args.length
     finger_thickness = args.thick
-    finger_space = args.space  # this should be pitch in the new terminology
+    finger_pitch = args.pitch 
+    
+    finger_space = finger_pitch - finger_thickness
+    first_finger = transfer_bar_in - finger_space
 
-    end_fingers = cap_y_max - (finger_space * num_fingers)
+    end_fingers = first_finger - (finger_pitch * num_fingers)
 
     # need to leave space for final (partial) finger
-    if (end_fingers - finger_space) < cap_y_min:
+    if (end_fingers - finger_pitch) < cap_top_in:
         raise OverflowError
 
-    start_points = np.linspace(cap_y_max, end_fingers, num_fingers, endpoint=False)
+    start_points = np.linspace(first_finger, end_fingers, num_fingers, endpoint=False)
 
     i = 0
     for i in range(num_fingers):
@@ -328,15 +315,15 @@ def gen_points(y_start, finger_length, right=True):
     # if it's coming from the right:
     if right:
         # minimum is the length away from the maximum edge of the capacitor
-        x_min = cap_x_max - finger_length
+        x_min = cap_right_in - finger_length
         # and maximum is at the maximum edge of the capacitor
-        x_max = cap_x_max
+        x_max = cap_right_in
     # otherwise, it's coming from the left
     else:
         # minumum is at the minimum edge of the capacitor
-        x_min = cap_x_min
+        x_min = cap_left_in
         # maximum is the length onto the minimum edge of the capacitor
-        x_max = cap_x_min + finger_length
+        x_max = cap_left_in + finger_length
 
     # Y minimum is subtracted from the start point
     # following Sonnet file logic, which is reverse of display logic
@@ -531,10 +518,10 @@ def set_args():
     parser.add_argument("-N", "--num_fingers", help="Number of fingers", default=27, type=int)
     parser.add_argument("-s", "--save", help="Save the generated file", default="~/mkid.son", type=str)
     parser.add_argument("-t", "--thick", help="Thickness of fingers in micrometres", default=2.0, type=float)
-    parser.add_argument("-S", "--space", help="Finger Spacing (start to start) in micrometres", default=4.0, type=float)
+    parser.add_argument("-p", "--pitch", help="Finger Pitch (start to start) in micrometres", default=4.0, type=float)
     parser.add_argument("-L", "--length", help="Length of fingers in micrometres", default=450.0, type=float)
     parser.add_argument("-f", "--final", help="length of final finger in micrometers", default=84.0, type=float)
-    iter_options = ["None", "length", "thick", "space", "final", "num_fingers"]
+    iter_options = ["None", "length", "thick", "pitch", "final", "num_fingers"]
     parser.add_argument("-i", "--iter", help="Property to iterate over", default="None", choices=iter_options, type=str)
     parser.add_argument("-e", "--end", help="Endpoint for iteration", default=None, type=float)
     parser.add_argument("-c", "--count", help="Count of steps in iteration", default=10, type=int)
@@ -563,5 +550,48 @@ def main():
 if __name__ == '__main__':
     # Gets the arguments from the command line and stores them globally.
     args = set_args()
+    # global variables as placeholders
+    # TODO: Parameterise these using arg or otherwise
+
+    # These relate to the edges of the ground plane.
+    ground_plane_split = 409.0
+    ground_plane_sidebar_breadth = 12.0
+
+    # these relate to the edges of the feed line
+    feed_line_space = 5.0 
+    feed_line_breadth = 35.0
+
+    # these relate to the edges of the resonator
+    resonator_top = 152.0
+    resonator_bottom = resonator_top + 175.0
+    resonator_left = ground_plane_sidebar_breadth
+
+    # polygon name counter, used to give each polygon a unique name
+    polygon_name = 100
+
+    # these relate to the edges of the inductor 
+    inductor_junction_start = 240.0
+    inductor_space = 1.0
+    inductor_breadth = 1.0
+    inductor_width = 20.0
+    inductor_junction_end = inductor_junction_start + (2 * inductor_breadth) + inductor_space
+    inductor_turns = 5
+    inductor_height = inductor_turns * 2 * (inductor_breadth  + inductor_space)
+
+    # These are the edges of the capacitor.
+    cap_side_space = 5.0
+    cap_side_breadth = 7.0
+    cap_left_out = ground_plane_sidebar_breadth + cap_side_space
+    cap_left_in = cap_left_out + cap_side_breadth
+    cap_right_out = args.x_size - ground_plane_sidebar_breadth - cap_side_space
+    cap_right_in = cap_right_out - cap_side_breadth
+    cap_vert_space = 4.0
+    cap_top_breadth = 10.0
+    cap_top_out = resonator_top + cap_vert_space + inductor_height
+    cap_top_in = cap_top_out + cap_top_breadth
+    transfer_bar_breadth = 5.0
+    transfer_bar_end = 250.0
+    transfer_bar_out = resonator_bottom - cap_vert_space
+    transfer_bar_in = transfer_bar_out - transfer_bar_breadth
     # Executes the main function.
     main()
