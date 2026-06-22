@@ -173,6 +173,23 @@ def gen_inductor():
     return inductor_string
 
 
+def gen_inductor_junction():
+    """
+    Generate the polygons for the inductor junction. This is read from a template file.
+    :return: inductor_junction_string (string containing the .son code for the inductor junction)
+    """
+    inductor_junction_string = file_read(os.path.expanduser('templates/inductor_junction.son'))
+    return inductor_junction_string
+
+
+def gen_inductor_turn():
+    pass
+
+
+def gen_inductor_end():
+    pass
+
+
 def gen_capacitor():
     """
     Generate the polygons for the capacitor. This includes the outline of the capacitor and the fingers.
