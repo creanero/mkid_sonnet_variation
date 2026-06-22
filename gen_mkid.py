@@ -226,12 +226,15 @@ def gen_capacitor():
 
 def gen_capacitor_frame():
     """
-    Generate the outline of the capacitor. This is read from a template file.
+    Generate the outline of the capacitor. This is generated procedurally based on the arguments and the other polygons, rather than being read from a template file.
     :return: capacitor_frame_string (string containing the .son code for the capacitor outline)
     """
-    # capacitor_frame_string = file_read(os.path.expanduser('templates/capacitor_frame.son'))
+    # generates the coordinates for the capacitor frame based on the arguments and the other polygons
+    # calculates the space between the transfer bar and the capacitor fingers
     cap_finger_space = args.pitch - args.thick
+    # calculates the bottom of the capacitor frame based on the transfer bar and the space between the transfer bar and the capacitor fingers
     cap_left_bottom = transfer_bar_in - cap_finger_space
+    # generates the polygons for the capacitor frame using the coordinates calculated above
     capacitor_frame_l_string = gen_sonnet_rectangle(cap_left_out, cap_left_in, cap_top_out, cap_left_bottom)
     capacitor_frame_r_string = gen_sonnet_rectangle(cap_right_in, cap_right_out, cap_top_out, transfer_bar_out)
     capacitor_top_l_string = gen_sonnet_rectangle(cap_left_in, inductor_junction_start, cap_top_out, cap_top_in)
@@ -257,25 +260,30 @@ def gen_fingers():
     finger_thickness = args.thick
     finger_pitch = args.pitch 
     
+    # calculates the space between the fingers based on the pitch and thickness
     finger_space = finger_pitch - finger_thickness
+    # calculates the starting point for the first finger based on the transfer bar and the space between the fingers
     first_finger = transfer_bar_in - finger_space
-
+    # calculates the end point for the last finger based on the first finger, the pitch and the number of fingers
     end_fingers = first_finger - (finger_pitch * num_fingers)
 
     # need to leave space for final (partial) finger
     if (end_fingers - finger_pitch) < cap_top_in:
         raise OverflowError
 
+    # generates the starting points for each finger based on the first finger, the pitch and the number of fingers
     start_points = np.linspace(first_finger, end_fingers, num_fingers, endpoint=False)
 
+    # generates an index variable to keep track of which finger is being generated, and whether it is on the right or left side of the capacitor
     i = 0
+    # iterates through the starting points, generating the polygons for each finger and adding them to the fingers_string
     for i in range(num_fingers):
         right = bool(i % 2)
         x_min, x_max, y_min, y_max = gen_points(start_points[i], finger_length, right)
         fingers_string = fingers_string + '\n' + gen_sonnet_rectangle(x_min, x_max, y_min, y_max)
 
-    # python ranges end at final value. If ever translating this to C-like code, replace i+1 with i
-    right = bool((i + 1) % 2)
+    # gets the right/left status of the final finger based on the number of fingers, and generates the partial finger at the end of the capacitor
+    right = bool((num_fingers) % 2)
     fingers_string = fingers_string + '\n' + gen_part_finger(end_fingers, right)
 
     return fingers_string
