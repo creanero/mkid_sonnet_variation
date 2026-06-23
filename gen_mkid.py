@@ -4,11 +4,11 @@ import decimal
 from socket import gaierror
 from tkinter import FIRST
 import numpy as np
+import warnings
 
 
-
-
-# TODO: refactor the use of global variables in this code, ideally removing them and replacing with function arguments or class attributes where needed. This will make the code more modular and easier to test.
+# TODO: refactor the use of global variables in this code, ideally removing them and replacing with function
+#  arguments or class attributes where needed. This will make the code more modular and easier to test.
 
 def gen_preamble():
     """
@@ -152,7 +152,8 @@ def gen_polygons():
 
 def gen_ground_plane():
     """
-    Generate the ground plane polygon. This is now procedurally generated based on the arguments and the other polygons, rather than being read from a template file.
+    Generate the ground plane polygon. This is now procedurally generated based on the arguments and the other
+    polygons, rather than being read from a template file.
     :return: ground_plane_string (string containing the .son code for the ground plane)
     """
     # generates the top, bottom and sidebars of the ground plane as rectangles
@@ -166,19 +167,22 @@ def gen_ground_plane():
     gp_bottom = resonator_bottom + ground_plane_sidebar_breadth
     gp_bottom_string = gen_sonnet_rectangle(0, args.x_size, resonator_bottom, gp_bottom)
 
-    # feed line is feed_line_breadth deep, with a gap of feed_line_space from the ground plane, and the whole width of the circuit
+    # feed line is feed_line_breadth deep, with a gap of feed_line_space from the ground plane, and the whole width
+    # of the circuit
     feed_line_top = gp_bottom + feed_line_space
     feed_line_bottom = feed_line_top + feed_line_breadth
     feed_line_string = gen_sonnet_rectangle(0, args.x_size, feed_line_top, feed_line_bottom)
 
-    # the ground plane opposite the feed line spans the whole width of the circuit
-    # it is split in two polygons, one from feed_line_space past the bottom of the feed_line to gp_split, and one from gp_split to the bottom of the circuit
+    # the ground plane opposite the feed line spans the whole width of the circuit it is split in two polygons,
+    # one from feed_line_space past the bottom of the feed_line to gp_split, and one from gp_split to the bottom of
+    # the circuit
     gp_opp = feed_line_bottom + feed_line_space
     gp_opp_string = gen_sonnet_rectangle(0, args.x_size, gp_opp, ground_plane_split)
     gp_final_string = gen_sonnet_rectangle(0, args.x_size, ground_plane_split, args.y_size)
 
     # combines these into a single string
-    ground_plane_string = (gp_top_string + '\n' + gp_sidebar_string_l + '\n' + gp_sidebar_string_r + '\n' + gp_bottom_string + '\n' + feed_line_string + '\n' + gp_opp_string + '\n' + gp_final_string)
+    ground_plane_string = (gp_top_string + '\n' + gp_sidebar_string_l + '\n' + gp_sidebar_string_r + '\n' +
+                           gp_bottom_string + '\n' + feed_line_string + '\n' + gp_opp_string + '\n' + gp_final_string)
     return ground_plane_string
 
 
@@ -232,7 +236,8 @@ def gen_capacitor_frame():
     # generates the coordinates for the capacitor frame based on the arguments and the other polygons
     # calculates the space between the transfer bar and the capacitor fingers
     cap_finger_space = args.pitch - args.thick
-    # calculates the bottom of the capacitor frame based on the transfer bar and the space between the transfer bar and the capacitor fingers
+    # calculates the bottom of the capacitor frame based on the transfer bar and the space between the transfer bar
+    # and the capacitor fingers
     cap_left_bottom = transfer_bar_in - cap_finger_space
     # generates the polygons for the capacitor frame using the coordinates calculated above
     capacitor_frame_l_string = gen_sonnet_rectangle(cap_left_out, cap_left_in, cap_top_out, cap_left_bottom)
@@ -242,7 +247,8 @@ def gen_capacitor_frame():
     transfer_bar_string = gen_sonnet_rectangle(transfer_bar_end, cap_right_in, transfer_bar_in, transfer_bar_out)
     
     # combines these into a single string
-    capacitor_frame_string = (capacitor_frame_l_string + '\n' + capacitor_frame_r_string + '\n' + capacitor_top_l_string + '\n' + capacitor_top_r_string + '\n' + transfer_bar_string)
+    capacitor_frame_string = (capacitor_frame_l_string + '\n' + capacitor_frame_r_string + '\n' + capacitor_top_l_string
+                              + '\n' + capacitor_top_r_string + '\n' + transfer_bar_string)
     return capacitor_frame_string
 
 
@@ -274,16 +280,19 @@ def gen_fingers():
     # generates the starting points for each finger based on the first finger, the pitch and the number of fingers
     start_points = np.linspace(first_finger, end_fingers, num_fingers, endpoint=False)
 
-    # generates an index variable to keep track of which finger is being generated, and whether it is on the right or left side of the capacitor
+    # generates an index variable to keep track of which finger is being generated, and whether it is on the right or
+    # left side of the capacitor
     i = 0
-    # iterates through the starting points, generating the polygons for each finger and adding them to the fingers_string
+    # iterates through the starting points, generating the polygons for each finger and adding them to the
+    # fingers_string
     for i in range(num_fingers):
         right = bool(i % 2)
         x_min, x_max, y_min, y_max = gen_points(start_points[i], finger_length, right)
         fingers_string = fingers_string + '\n' + gen_sonnet_rectangle(x_min, x_max, y_min, y_max)
 
-    # gets the right/left status of the final finger based on the number of fingers, and generates the partial finger at the end of the capacitor
-    right = bool((num_fingers) % 2)
+    # gets the right/left status of the final finger based on the number of fingers, and generates the partial finger
+    # at the end of the capacitor
+    right = bool(num_fingers % 2)
     fingers_string = fingers_string + '\n' + gen_part_finger(end_fingers, right)
 
     return fingers_string
@@ -328,7 +337,7 @@ def gen_points(y_start, finger_length, right=True):
         x_max = cap_right_in
     # otherwise, it's coming from the left
     else:
-        # minumum is at the minimum edge of the capacitor
+        # minimum is at the minimum edge of the capacitor
         x_min = cap_left_in
         # maximum is the length onto the minimum edge of the capacitor
         x_max = cap_left_in + finger_length
@@ -349,7 +358,7 @@ def gen_sonnet_rectangle(x_min, x_max, y_min, y_max):
     :param x_max:float Maximum x-coordinate in micrometres
     :param y_min:float Minimum y-coordinate in micrometres
     :param y_max:float Maximum y-coordinate in micrometres
-    :return:str Containing the sonnet formtted code for the rectangle
+    :return:str Containing the sonnet formatted code for the rectangle
     """
     # header line taken from template
     # TODO: (Low priority) parameterise this line - find out function of each element.
@@ -373,7 +382,9 @@ def gen_sonnet_rectangle(x_min, x_max, y_min, y_max):
                 "\nEND")
     
     # increments the polygon name for the next polygon
-    # TODO: this is a bit hacky, ideally the polygon name would be generated in a more modular way, perhaps by a class that keeps track of the count of polygons and generates unique names as needed.
+    # TODO: this is a bit hacky, ideally the polygon name would be
+    #  generated in a more modular way, perhaps by a class that keeps track of the count of polygons and generates
+    #  unique names as needed.
     polygon_name = polygon_name + 1  
 
     return out_text
@@ -411,14 +422,14 @@ def gen_tail():
     :return: tail_text (string containing the tail content for the .son file)
     """
     # reads the tail content from the template
-    # TODO: sepatate out the OPT, VarSweep, Sonnet output file, and Translator components and make these variable
+    # TODO: separate out the OPT, VarSweep, Sonnet output file, and Translator components and make these variable
     tail_text = file_read(os.path.expanduser('templates/tail.son'))
     return tail_text
 
 
 def file_read(in_filename):
     """
-    Reads in the contents of in_filename and returns the contents as a string
+    Reads in the contents of in_filename and returns the contents as a string.
     :param in_filename: string containing the path to the file to be read
     :return:
     """
