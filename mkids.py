@@ -2,6 +2,9 @@
 
 
 
+from numpy import poly
+
+
 class mkid(object):
     def __init__(self):
         self.__resonator = resonator()
@@ -74,10 +77,11 @@ class geometry_element(object):
         return out_string
 
 class capacitor(geometry_element):
-    def __init__(self):
+    def __init__(self, polygon_id):
         super().__init__()
-        self.__fingers = fingers()
-        self.__frame = frame()
+        polygon_id = self.__fingers = fingers(polygon_id)
+        polygon_id = self.__frame = frame(polygon_id)
+        return polygon_id
 
     def get_polygons(self):
         polygons = []
@@ -104,7 +108,7 @@ class frame(geometry_element):
         transfer_bar_in = transfer_bar_out - transfer_bar_breadth
 
 class fingers(geometry_element):
-    def __init__(self):
+    def __init__(self, first_polygon_id):
         super().__init__()
         # initialize the capacitor parameters to default values
         self.__num_fingers = 27
@@ -114,18 +118,21 @@ class fingers(geometry_element):
         self.__finger_pitch = self.__finger_breadth + self.__finger_space
         self.__finger_final_length = 84.0
         self.__polygons = []
-        self.gen_fingers()
+        last_polygon = self.gen_fingers(first_polygon_id)
+        return last_polygon
 
 
-    def gen_fingers(self):
+    def gen_fingers(self, polygon_id):
         # generate the polygons for the fingers of the capacitor
         for i in range(self.__num_fingers):
             # create a new rectangle for each finger
-            finger = rectangle()
+            finger = rectangle(polygon_id=polygon_id)
+            polygon_id += 1
             # set the start position and dimensions of the finger
             # TODO: import this from the old version of the code
             # add the finger to the list of polygons
             self.__polygons.append(finger)
+        return polygon_id
 
 
 
