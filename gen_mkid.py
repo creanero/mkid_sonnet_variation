@@ -1,4 +1,6 @@
 import argparse
+from email import feedparser
+from math import fabs
 import os
 import decimal
 from socket import gaierror
@@ -34,9 +36,9 @@ def gen_geometry():
     geometry_text = geometry_text + gen_scale_line()
     # pulls in the backing parameters from a file
     # TODO: check what needs to be done for this to be parameterised
-    geometry_text = geometry_text + gen_backing()
+    geometry_text = geometry_text + gen_dielectric()
     # Generates the polygons that constitute the circuit
-    geometry_text = geometry_text + gen_polygons()
+    geometry_text = geometry_text + gen_circuit()
     # End the geometry section
     geometry_text = geometry_text + '\nEND GEO'
     return geometry_text
@@ -115,23 +117,23 @@ def gen_safe_scale(size, scale_factor):
     return safe_size, safe_boxes
 
 
-def gen_backing():
+def gen_dielectric():
     """
     Generates the backing text from a template file. This defines the substrate and some other parameters
     :return:
     """
     # TODO: identify ways to improve on this
-    backing_text = '\n' + file_read(os.path.expanduser('templates/backing.son'))
-    return backing_text
+    dielectric_text = '\n' + file_read(os.path.expanduser('templates/dielectric.son'))
+    return dielectric_text
 
 
-def gen_polygons():
+def gen_circuit():
     """
-    Generates the polygons that form the foreground circuit
+    Generates the polygons and ports that form the foreground circuit
     :return:
     """
     # Generate the ground plane
-    ground_plane_string = gen_ground_plane()
+    gp_ports_string, gp_polygon_string = gen_ground_plane()
 
     # Generate the inductor
     inductor_string = gen_inductor()
@@ -140,14 +142,16 @@ def gen_polygons():
     capacitor_string = gen_capacitor()
 
     # Combines the base and fingers strings
-    polygon_string = ground_plane_string + '\n' + inductor_string + '\n' + capacitor_string
+    polygon_string = gp_polygon_string + '\n' + inductor_string + '\n' + capacitor_string
 
     # Counts the polygons in the string using the substring "END"
     num_polygons = count_substring(polygon_string, "END")
 
     # Combines the polygons with the count
-    polygon_text = ('\nNUM ' + str(num_polygons) + '\n' + polygon_string)
-    return polygon_text
+    polygon_text = ('NUM ' + str(num_polygons) + '\n' + polygon_string)
+
+    circuit_text = ('\n' + gp_ports_string + '\n' + polygon_text)
+    return circuit_text
 
 
 def gen_ground_plane():
@@ -156,34 +160,81 @@ def gen_ground_plane():
     polygons, rather than being read from a template file.
     :return: ground_plane_string (string containing the .son code for the ground plane)
     """
-    # generates the top, bottom and sidebars of the ground plane as rectangles
+    gp_left = 0
+    gp_right = args.x_size
+    gp_top = 0
     # top bar is from the top of the circuit to the top of the resonator, and spans the whole width of the circuit
-    gp_top_string = gen_sonnet_rectangle(0, args.x_size, 0, resonator_top)
+    gp_top_string = gen_sonnet_rectangle(gp_left, gp_right, gp_top, resonator_top)
     # left and right sidebars are from the top of the resonator to the bottom of the resonator, and are gp_sidebar wide
-    gp_sidebar_string_l = gen_sonnet_rectangle(0, resonator_left, resonator_top, resonator_bottom)
-    resonator_r = args.x_size - ground_plane_sidebar_breadth
-    gp_sidebar_string_r = gen_sonnet_rectangle(resonator_r, args.x_size, resonator_top, resonator_bottom)
-    # bottom bar is from the bottom of the resonator and gp_sidebar deep, and spans the whole width of the circuit
-    gp_bottom = resonator_bottom + ground_plane_sidebar_breadth
-    gp_bottom_string = gen_sonnet_rectangle(0, args.x_size, resonator_bottom, gp_bottom)
+    gp_sidebar_string_l = gen_sonnet_rectangle(gp_left, resonator_left, resonator_top, resonator_bottom)
+    resonator_r = gp_right - gp_sidebar_breadth
+    gp_sidebar_string_r = gen_sonnet_rectangle(resonator_r, gp_right, resonator_top, resonator_bottom)
 
-    # feed line is feed_line_breadth deep, with a gap of feed_line_space from the ground plane, and the whole width
-    # of the circuit
-    feed_line_top = gp_bottom + feed_line_space
-    feed_line_bottom = feed_line_top + feed_line_breadth
-    feed_line_string = gen_sonnet_rectangle(0, args.x_size, feed_line_top, feed_line_bottom)
+    # near bar is from the bottom of the resonator to the gap before the feedline, and spans the whole width of the
+    # circuit. It includes ports on the left and right side of the resonator, which are at the midpoint of the near bar 
+    gp_port_num = -1
+    gp_near_port_string, gp_near_string, gp_near_bottom = gen_gp_port_bar(resonator_bottom, gp_sidebar_breadth, gp_port_num, gp_port_num)
 
-    # the ground plane opposite the feed line spans the whole width of the circuit it is split in two polygons,
-    # one from feed_line_space past the bottom of the feed_line to gp_split, and one from gp_split to the bottom of
-    # the circuit
-    gp_opp = feed_line_bottom + feed_line_space
-    gp_opp_string = gen_sonnet_rectangle(0, args.x_size, gp_opp, ground_plane_split)
-    gp_final_string = gen_sonnet_rectangle(0, args.x_size, ground_plane_split, args.y_size)
+    # generates the feedline and its ports
+    feed_line_top = gp_near_bottom + feed_line_space
+    feed_line_port_num_l = 2
+    feed_line_port_num_r = 1
+    feed_line_port_string, feed_line_string, feed_line_bottom = gen_gp_port_bar(feed_line_top, feed_line_breadth, feed_line_port_num_l, feed_line_port_num_r)
+    
+    # generates the opposite bar of the ground plane and its ports
+    gp_opp_top = feed_line_bottom + feed_line_space
+    gp_opp_port_string, gp_opp_string, gp_opp_bottom = gen_gp_port_bar(gp_opp_top, gp_opp_breadth, gp_port_num, gp_port_num)
 
-    # combines these into a single string
-    ground_plane_string = (gp_top_string + '\n' + gp_sidebar_string_l + '\n' + gp_sidebar_string_r + '\n' +
-                           gp_bottom_string + '\n' + feed_line_string + '\n' + gp_opp_string + '\n' + gp_final_string)
-    return ground_plane_string
+    # generates the final part of the ground plane
+    gp_final_string = gen_sonnet_rectangle(0, args.x_size, gp_split, args.y_size)
+
+    # combines the ports into a single string
+    gp_ports_string = (gp_near_port_string + '\n' + feed_line_port_string + '\n' + gp_opp_port_string)
+
+    # combines the polygons into a single string
+    gp_polygon_string = (gp_top_string + '\n' + gp_sidebar_string_l + '\n' + gp_sidebar_string_r + '\n' +
+                           gp_near_string + '\n' + feed_line_string + '\n' + gp_opp_string + '\n' + gp_final_string)
+    return gp_ports_string, gp_polygon_string
+
+
+def gen_gp_port_bar(top, breadth, port_num_l, port_num_r, reference_plane_l=1, reference_plane_r=3):
+    # near bar is from the bottom of the resonator and gp_sidebar deep, and spans the whole width of the circuit
+    bottom = top + breadth
+    left = 0
+    right = args.x_size
+
+    # generates the ports 
+    midpoint = bottom + (breadth/2)
+    port_string_l = gen_port(left, midpoint, port_num_l, reference_plane_l)
+    port_string_r = gen_port(right, midpoint, port_num_r, reference_plane_r)
+    port_string = port_string_r + '\n' + port_string_l
+
+    # generates the sonnet rectangle for the circuit bar
+    bar_string = gen_sonnet_rectangle(left, right, top, bottom)
+
+    return port_string, bar_string, bottom
+
+
+def gen_port(x, y, port_num, reference_plane, port_type="BOX", resistance=50, reactance=0, inductance=0, capacitance=0): # polygon_name is a global variable, so it doesn't need to be passed in
+    """
+    Generates the port string for the .son file. This is used to define the ports for the Sonnet simulation.
+    :param x: X-coordinate of the port in micrometres
+    :param y: Y-coordinate of the port in micrometres
+    :param port_num: Port number (integer)
+    :param reference_plane: Reference plane for the port (integer)
+    :param port_type: Type of port (string, default is "BOX")
+    :param resistance: Resistance of the port (float, default is 50)
+    :param reactance: Reactance of the port (float, default is 0)
+    :param inductance: Inductance of the port (float, default is 0)
+    :param capacitance: Capacitance of the port (float, default is 0)
+    :return: port_string (string containing the .son code for the port)
+    """
+    port_string =("POR1 {}\n".format(port_type) +
+                  "POLY {} 1\n".format(polygon_name) + 
+                  "{}\n".format(reference_plane) + 
+                  "{} {} {} {} {} {} {}".format(port_num, resistance, reactance, inductance, capacitance, x, y))
+    return port_string
+
 
 
 def gen_inductor():
@@ -573,8 +624,9 @@ if __name__ == '__main__':
     # TODO: Parameterise these using arg or otherwise
 
     # These relate to the edges of the ground plane.
-    ground_plane_split = 409.0
-    ground_plane_sidebar_breadth = 12.0
+    gp_split = 409.0
+    gp_opp_breadth = 25.0
+    gp_sidebar_breadth = 12.0
 
     # these relate to the edges of the feed line
     feed_line_space = 5.0 
@@ -583,7 +635,7 @@ if __name__ == '__main__':
     # these relate to the edges of the resonator
     resonator_top = 152.0
     resonator_bottom = resonator_top + 175.0
-    resonator_left = ground_plane_sidebar_breadth
+    resonator_left = gp_sidebar_breadth
 
     # polygon name counter, used to give each polygon a unique name
     polygon_name = 100
@@ -600,9 +652,9 @@ if __name__ == '__main__':
     # These are the edges of the capacitor.
     cap_side_space = 5.0
     cap_side_breadth = 7.0
-    cap_left_out = ground_plane_sidebar_breadth + cap_side_space
+    cap_left_out = gp_sidebar_breadth + cap_side_space
     cap_left_in = cap_left_out + cap_side_breadth
-    cap_right_out = args.x_size - ground_plane_sidebar_breadth - cap_side_space
+    cap_right_out = args.x_size - gp_sidebar_breadth - cap_side_space
     cap_right_in = cap_right_out - cap_side_breadth
     cap_vert_space = 4.0
     cap_top_breadth = 10.0
