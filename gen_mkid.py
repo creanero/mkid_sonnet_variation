@@ -275,25 +275,132 @@ def gen_inductor():
     :return: inductor_string (string containing the .son code for the inductor)
     """
     # reads inductor from a template file
-    inductor_string = file_read(os.path.expanduser('templates/inductor.son'))
+    # inductor_string = file_read(os.path.expanduser('templates/inductor.son'))
+    
+    ij_string, origin_x, origin_y = gen_inductor_junction()
+
+    inductor_string = ij_string
+
+    direction = 1
+
+    for i in range(inductor_turns):
+        direction = (-1) ** i
+        print(i, direction)
+        ind_turn_string, origin_x, origin_y = gen_inductor_turn(origin_x, origin_y, direction)
+        inductor_string = inductor_string + '\n' + ind_turn_string
+
+    direction = -1 ** inductor_turns
+
+    inductor_end_string = gen_inductor_end(origin_x, origin_y, direction)
+
+    inductor_string = inductor_string + '\n' + inductor_end_string
+
     return inductor_string
 
 
 def gen_inductor_junction():
     """
     Generate the polygons for the inductor junction. This is read from a template file.
-    :return: inductor_junction_string (string containing the .son code for the inductor junction)
+    :return: ij_string (string containing the .son code for the inductor junction)
     """
-    inductor_junction_string = file_read(os.path.expanduser('templates/inductor_junction.son'))
-    return inductor_junction_string
+
+    ij_bottom = cap_top_in
+
+    ij_l_out = ij_start
+    ij_l_in = ij_start + inductor_breadth
+    ij_l_top = cap_top_out + ((inductor_breadth * 2) + inductor_space)
+    ij_l_string = gen_sonnet_rectangle(ij_l_out, ij_l_in, ij_bottom, ij_l_top)
+
+    ij_r_out = ij_end
+    ij_r_in = ij_end - inductor_breadth
+    ij_r_top = cap_top_out + inductor_breadth
+    ij_r_string = gen_sonnet_rectangle(ij_r_in, ij_r_out, ij_bottom, ij_r_top)
+
+    ij_string = ij_l_string + '\n' + ij_r_string
+    
+    return ij_string, ij_l_out, ij_l_top
 
 
-def gen_inductor_turn():
-    pass
+def gen_inductor_turn(origin_x, origin_y, direction):
+    ind_turn_out_string = gen_ind_turn_out(origin_x, origin_y, direction)
+    ind_turn_mid_string = gen_ind_turn_mid(origin_x, origin_y, direction)
+    ind_turn_low_string = gen_ind_turn_low(origin_x, origin_y, direction)
+    ind_turn_top_string = gen_ind_turn_top(origin_x, origin_y, direction)
+
+    ind_turn_string = ind_turn_out_string + '\n' + ind_turn_mid_string + '\n' + ind_turn_low_string + '\n' + ind_turn_top_string
+    
+    final_x = origin_x + (direction * inductor_width)
+    final_y = origin_y - (2 * inductor_pitch)
+
+    return ind_turn_string, final_x, final_y
 
 
-def gen_inductor_end():
-    pass
+def gen_ind_turn_out(origin_x, origin_y, direction):
+    ind_turn_out_origin_x = origin_x
+    ind_turn_out_origin_y = origin_y
+    ind_turn_out_final_x = ind_turn_out_origin_x + (direction * inductor_breadth)
+    ind_turn_out_length = (3 * inductor_space) + (4 * inductor_breadth)
+    ind_turn_out_final_y = ind_turn_out_origin_y - ind_turn_out_length
+    ind_turn_out_string = gen_sonnet_rectangle(ind_turn_out_origin_x, ind_turn_out_final_x, ind_turn_out_origin_y, ind_turn_out_final_y)
+    return ind_turn_out_string
+
+
+def gen_ind_turn_mid(origin_x, origin_y, direction):
+    ind_turn_mid_origin_x = origin_x + (direction * inductor_pitch)
+    ind_turn_mid_origin_y = origin_y - inductor_pitch
+    ind_turn_mid_final_x = ind_turn_mid_origin_x + (direction * inductor_breadth)
+    ind_turn_mid_length = (1 * inductor_space) + (2 * inductor_breadth)
+    ind_turn_mid_final_y = ind_turn_mid_origin_y - ind_turn_mid_length
+    ind_turn_mid_string = gen_sonnet_rectangle(ind_turn_mid_origin_x, ind_turn_mid_final_x, ind_turn_mid_origin_y, ind_turn_mid_final_y)
+    return ind_turn_mid_string
+
+
+def gen_ind_turn_low(origin_x, origin_y, direction):
+    ind_turn_low_origin_x = origin_x + (direction * ((2 * inductor_breadth) + inductor_space))
+    ind_turn_low_origin_y = origin_y - (2 * inductor_pitch)
+    ind_turn_low_length = inductor_width - (2 * inductor_pitch)
+    ind_turn_low_final_x = ind_turn_low_origin_x + (direction * ind_turn_low_length)
+    ind_turn_low_final_y = ind_turn_low_origin_y - inductor_breadth
+    ind_turn_low_string = gen_sonnet_rectangle(ind_turn_low_origin_x, ind_turn_low_final_x, ind_turn_low_origin_y, ind_turn_low_final_y)
+    return ind_turn_low_string
+
+
+def gen_ind_turn_top(origin_x, origin_y, direction):
+    ind_turn_top_origin_x = origin_x + (direction * inductor_breadth)
+    ind_turn_top_origin_y = origin_y - (3 * inductor_pitch)
+    ind_turn_top_length = inductor_width - (2 * inductor_pitch)
+    ind_turn_top_final_x = ind_turn_top_origin_x + (direction * ind_turn_top_length)
+    ind_turn_top_final_y = ind_turn_top_origin_y - inductor_breadth
+    ind_turn_top_string = gen_sonnet_rectangle(ind_turn_top_origin_x, ind_turn_top_final_x, ind_turn_top_origin_y, ind_turn_top_final_y)
+    return ind_turn_top_string
+
+
+
+def gen_inductor_end(origin_x, origin_y, direction):
+    ind_end_side_string = gen_ind_end_side(origin_x, origin_y, direction)
+    ind_end_top_string = gen_ind_end_top(origin_x, origin_y, direction)
+
+    ind_end_string = ind_end_side_string + '\n' + ind_end_top_string
+    return ind_end_string
+
+def gen_ind_end_side(origin_x, origin_y, direction):    
+    ind_turn_side_origin_x = origin_x 
+    ind_turn_side_origin_y = origin_y 
+    ind_turn_side_length = (1 * inductor_space) + (2 * inductor_breadth)
+    ind_turn_side_final_x = ind_turn_side_origin_x + (direction * inductor_breadth)
+    ind_turn_side_final_y = ind_turn_side_origin_y - ind_turn_side_length
+    ind_turn_side_string = gen_sonnet_rectangle(ind_turn_side_origin_x, ind_turn_side_final_x, ind_turn_side_origin_y, ind_turn_side_final_y)
+    return ind_turn_side_string
+
+def gen_ind_end_top(origin_x, origin_y, direction):    
+    ind_turn_top_origin_x = origin_x + (inductor_breadth * direction)
+    ind_turn_top_origin_y = origin_y - (inductor_pitch)
+    ind_turn_top_length = inductor_pitch
+    ind_turn_top_final_x = ind_turn_top_origin_x + (direction * ind_turn_top_length)
+    ind_turn_top_final_y = ind_turn_top_origin_y - inductor_breadth
+    ind_turn_top_string = gen_sonnet_rectangle(ind_turn_top_origin_x, ind_turn_top_final_x, ind_turn_top_origin_y, ind_turn_top_final_y)
+    return ind_turn_top_string
+
 
 
 def gen_capacitor():
@@ -325,8 +432,8 @@ def gen_capacitor_frame():
     # generates the polygons for the capacitor frame using the coordinates calculated above
     capacitor_frame_l_string = gen_sonnet_rectangle(cap_left_out, cap_left_in, cap_top_out, cap_left_bottom)
     capacitor_frame_r_string = gen_sonnet_rectangle(cap_right_in, cap_right_out, cap_top_out, transfer_bar_out)
-    capacitor_top_l_string = gen_sonnet_rectangle(cap_left_in, inductor_junction_start, cap_top_out, cap_top_in)
-    capacitor_top_r_string = gen_sonnet_rectangle(inductor_junction_end, cap_right_in, cap_top_out, cap_top_in)
+    capacitor_top_l_string = gen_sonnet_rectangle(cap_left_in, ij_start, cap_top_out, cap_top_in)
+    capacitor_top_r_string = gen_sonnet_rectangle(ij_end, cap_right_in, cap_top_out, cap_top_in)
     transfer_bar_string = gen_sonnet_rectangle(transfer_bar_end, cap_right_in, transfer_bar_in, transfer_bar_out)
     
     # combines these into a single string
@@ -673,13 +780,14 @@ if __name__ == '__main__':
     polygon_name = 100
 
     # these relate to the edges of the inductor 
-    inductor_junction_start = 240.0
+    ij_start = 240.0
     inductor_space = 1.0
     inductor_breadth = 1.0
+    inductor_pitch = inductor_breadth + inductor_space
     inductor_width = 20.0
-    inductor_junction_end = inductor_junction_start + (2 * inductor_breadth) + inductor_space
+    ij_end = ij_start + (2 * inductor_breadth) + inductor_space
     inductor_turns = 5
-    inductor_height = inductor_turns * 2 * (inductor_breadth  + inductor_space)
+    inductor_height = inductor_turns * 2 * inductor_pitch
 
     # These are the edges of the capacitor.
     cap_side_space = 5.0
