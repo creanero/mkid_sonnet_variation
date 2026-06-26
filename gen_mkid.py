@@ -288,7 +288,7 @@ def gen_inductor():
         ind_turn_string, origin_x, origin_y = gen_inductor_turn(origin_x, origin_y, direction)
         inductor_string = inductor_string + '\n' + ind_turn_string
 
-    direction = -1 ** inductor_turns
+    direction = (-1) ** inductor_turns
 
     inductor_end_string = gen_inductor_end(origin_x, origin_y, direction)
 
