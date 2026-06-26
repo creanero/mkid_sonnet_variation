@@ -285,7 +285,6 @@ def gen_inductor():
 
     for i in range(inductor_turns):
         direction = (-1) ** i
-        print(i, direction)
         ind_turn_string, origin_x, origin_y = gen_inductor_turn(origin_x, origin_y, direction)
         inductor_string = inductor_string + '\n' + ind_turn_string
 
