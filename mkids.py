@@ -1,13 +1,6 @@
-from token import STAR
-
 from matplotlib import pyplot as plt
 import numpy as np
 
-class mkid(object):
-    def __init__(self):
-        self.__resonator = resonator()
-
-    pass
 
 
 class polygon(object):
@@ -96,6 +89,8 @@ class Geometry(object):
         return len(self.__polygons)
     def get_current_polygon(self):
         return self.__current_polygon_id
+    def set_current_polygon(self, polygon_id):
+        self.__current_polygon_id = polygon_id
     def get_polygons_string(self):
         out_string = ""
         for polygon in self.get_polygons():
@@ -362,6 +357,8 @@ class Inductor(Geometry):
         return self.ij_b -  ((self.breadth * 2) + self.space)
     def _ij_l2(self):
         return self.ij_b -  self.breadth
+    def inductor_height(self):
+        return self.turns * self._pitch() * 2
 
     # ------------------------------------------------------------------ #
     # Internal geometry helpers
@@ -451,7 +448,7 @@ class GroundPlane(Geometry):
                  x_size=0.0, y_size=0.0,
                  top_b=0.0, side_b=0.0, near_b=0.0, feed_b=0.0, oppo_b=0.0,
                  res_yl=0.0,          
-                 feed_s=0.0, gp_split=0.0,
+                 feed_s=0.0, 
                  start_polygon_id=100):
         super().__init__(start_polygon_id)
         self.__ports = []
@@ -468,9 +465,8 @@ class GroundPlane(Geometry):
         self.near_b = near_b  # near bar between resonator and feed line
         self.feed_b = feed_b  # feed line
         self.oppo_b = oppo_b  # bar opposite the feed line
-        # vertical gap around the feed line, and the y at which the final bar starts
+        # vertical gap around the feed line
         self.feed_s = feed_s
-        self.gp_split = gp_split
 
     # ------------------------------------------------------------------ #
     # Public API
@@ -482,11 +478,11 @@ class GroundPlane(Geometry):
         # left and right sidebars, running down either side of the resonator
         # final bar: full width, from the split line to the bottom of the circuit
         rects = [
-            # dx,               dy,             width,            length
-            (0,                 0,              self.x_size,        self.top_b),       # top bar
-            (0,                 self.top_b,     self.side_b,     self.res_yl),      # left side bar
-            (self._res_xf(),    self.top_b,     self.side_b,     self.res_yl),      # right side bar
-            (0,                 self.gp_split,  self.x_size,        self._final_b()),  # final bar
+            # dx,               dy,                 width,            length
+            (0,                 0,                  self.x_size,        self.top_b),       # top bar
+            (0,                 self.top_b,         self.side_b,     self.res_yl),      # left side bar
+            (self._res_xf(),    self.top_b,         self.side_b,     self.res_yl),      # right side bar
+            (0,                 self._final_y0(),   self.x_size,        self._final_b()),  # final bar
         ]
 
         for r in rects:
@@ -538,6 +534,8 @@ class GroundPlane(Geometry):
 
     def get_res_origin(self):
         return self._res_x0(), self._res_y0()
+    def get_res_ending(self):
+        return self._res_xf(), self._res_yf()
 
     # ------------------------------------------------------------------ #
     # Internal calculated properties
@@ -566,6 +564,8 @@ class GroundPlane(Geometry):
         return self._feed_yf() + self.feed_s
     def _opp_yf(self):
         return self._oppo_y0() + self.oppo_b
+    def _final_y0(self):
+        return self._opp_yf()
     def _final_b(self):
         return self._yf() - self._opp_yf()
 
@@ -596,52 +596,162 @@ class GroundPlane(Geometry):
         right = self._xf()
         # the original emits the right port before the left port
         self.add_port(Port(left,  midpoint, port_num_l, reference_plane_l, bar_id))
-        self.add_port(Port(right, midpoint, port_num_r, reference_plane_r, bar_id))      
+        self.add_port(Port(right, midpoint, port_num_r, reference_plane_r, bar_id))  
+        
+
+class Circuit(object):
+    """
+    Composes a GroundPlane, an Inductor, and a Capacitor into a single MKID
+    circuit, resolving the handful of coordinates that are shared between them
+    while leaving every other parameter independent (set by the caller when
+    each geometry is constructed).
+
+    Coupling handled here:
+      * inductor_height = inductor.inductor_height() (turns x 2 x pitch).
+      * The capacitor is placed inside the ground plane's resonator region:
+            x0 = get_res_origin().x + cap_dx
+            y0 = get_res_origin().y + (cap_dy + inductor_height)
+            xf = get_res_ending().x - cap_dx
+            yf = get_res_ending().y - cap_dy
+        i.e. offset inward by cap_dx / cap_dy, leaving room above for the inductor.
+      * The inductor is placed at the capacitor's junction origin,
+        capacitor.gen_ij_origin().
+      * Polygon ids run sequentially across all three geometries.
+
+    Usage:
+        gp  = GroundPlane(...)
+        cap = Capacitor(...)   # its x0/y0/xf/yf are overwritten by the Circuit
+        ind = Inductor(...)    # its x0/y0 are overwritten by the Circuit
+        circuit = Circuit(gp, cap, ind, cap_dx=5.0, cap_dy=4.0, start_polygon_id=100)
+        circuit.generate()
+        son_code = circuit.get_sonnet_string()
+
+    Requires these small additions to the existing classes:
+        Geometry.set_current_polygon(self, polygon_id)
+        GroundPlane.get_res_origin(self)   -> (resonator_left, resonator_top)
+        GroundPlane.get_res_ending(self)   -> (x_size - sidebar_b, resonator_bottom)
+        Inductor.inductor_height(self)     -> turns * pitch
+    """
+
+    def __init__(self, ground_plane, capacitor, inductor,
+                 cap_dx=0.0, cap_dy=0.0, start_polygon_id=100):
+        self.__ground_plane = ground_plane
+        self.__capacitor = capacitor
+        self.__inductor = inductor
+        # inward offsets of the capacitor frame from the resonator region
+        self.cap_dx = cap_dx
+        self.cap_dy = cap_dy
+        # polygon id the first polygon of the whole circuit will take
+        self.start_polygon_id = start_polygon_id
+        self.__generated = False
+        # resolve the shared coordinates up front so the sub-geometries are
+        # fully positioned before anything is generated
+        self.__place()
+
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
+    def generate(self):
+        """
+        Generate every polygon and port. Geometries are generated in order and
+        their polygon-id counters chained, so ids are unique and sequential
+        across the ground plane, inductor, and capacitor. Idempotent.
+        """
+        if self.__generated:
+            return
+
+        self.__ground_plane.set_current_polygon(self.start_polygon_id)
+        self.__ground_plane.generate()
+
+        self.__inductor.set_current_polygon(self.__ground_plane.get_current_polygon())
+        self.__inductor.generate()
+
+        self.__capacitor.set_current_polygon(self.__inductor.get_current_polygon())
+        self.__capacitor.generate()
+
+        self.__generated = True
+
+    def get_sonnet_string(self):
+        """
+        Return the combined Sonnet code: all ports, then the polygon count,
+        then all polygons -- across the three geometries, in id order.
+        """
+        ports_string = self.__ground_plane.get_ports_string()
+        polygons_string = (self.__ground_plane.get_polygons_string() +
+                           self.__inductor.get_polygons_string() +
+                           self.__capacitor.get_polygons_string())
+        num_polygons = (self.__ground_plane.get_num_polygons() +
+                        self.__inductor.get_num_polygons() +
+                        self.__capacitor.get_num_polygons())
+        return ports_string + "\nNUM " + str(num_polygons) + polygons_string
+
+    def get_polygons(self):
+        polygons = []
+        polygons.extend(self.__ground_plane.get_polygons())
+        polygons.extend(self.__capacitor.get_polygons())
+        polygons.extend(self.__inductor.get_polygons())
+        return polygons
+
+    def get_ground_plane(self):
+        return self.__ground_plane
+
+    def get_capacitor(self):
+        return self.__capacitor
+
+    def get_inductor(self):
+        return self.__inductor
+
+    # ------------------------------------------------------------------ #
+    # Internal wiring
+    # ------------------------------------------------------------------ #
+    def __place(self):
+        """Resolve the coordinates shared between the three geometries."""
+        inductor_height = self.__inductor.inductor_height()
+
+        res_origin_x, res_origin_y = self.__ground_plane.get_res_origin()
+        res_end_x, res_end_y = self.__ground_plane.get_res_ending()
+
+        # capacitor sits inside the resonator region, leaving room for the
+        # inductor above it
+        self.__capacitor.x0 = res_origin_x + self.cap_dx
+        self.__capacitor.y0 = res_origin_y + (self.cap_dy + inductor_height)
+        self.__capacitor.xf = res_end_x - self.cap_dx
+        self.__capacitor.yf = res_end_y - self.cap_dy
+
+        # inductor sits at the capacitor's inductor-junction origin (depends on
+        # the capacitor's y0, which was just set)
+        self.__inductor.x0, self.__inductor.y0 = self.__capacitor.gen_ij_origin()
+        self.__inductor.ij_b = self.__capacitor.top_b
 
 
-class resonator(object):
-    def __init__(self):
-        self.__bottom = 0.0
-        self.__top = 0.0
-        self.__left = 0.0
-        self.__right = 0.0
-        self.__inductor = Inductor()
-        self.__capacitor = Capacitor()
 
 ground_plane = GroundPlane(x_size=500.0, y_size=500.0,
                            top_b=500.0-348.0, res_yl=348-173,
                            side_b=12.0, near_b=12.0, feed_b=35.0, oppo_b=25.0,
-                           feed_s=5.0, gp_split=409.0,
+                           feed_s=5.0, 
                            start_polygon_id=100)
-ground_plane.generate()
 
 capacitor = Capacitor(finger_p=4.0, finger_b=2.0, finger_l=450.0, num_fingers=27, finger_lf=84.0,
-                 x0=17.0, y0=500.0-324, xf=483.0, yf=500-177.0,
-                 side_b=7.0, top_b=10.0, transfer_b=4, transfer_0=250.0,
-                 ij_start=240.0, ij_end=243.0,
-                 start_polygon_id=ground_plane.get_current_polygon())
-capacitor.generate()
+                      side_b=7.0, top_b=10.0, transfer_b=4, transfer_0=250.0,
+                      ij_start=240.0, ij_end=243.0)
 
-ind_x0, ind_y0 = capacitor.gen_ij_origin()
-start_ind_polygon_id = capacitor.get_current_polygon()
 
 inductor = Inductor(turns=5,
             breadth=1.0,
             space=1.0,
-            length=20.0,
-            x0=ind_x0,
-            y0=ind_y0,
-            ij_b=10.0,
-            start_polygon_id=start_ind_polygon_id)
-inductor.generate()
+            length=20.0)
+
+circuit = Circuit(ground_plane=ground_plane, capacitor=capacitor, inductor=inductor,
+                  cap_dx=4.0, cap_dy=4.0)
+
+circuit.generate()
 
 
 #polygons=inductor.get_polygons()
-print(ground_plane.get_ports_string())
-print(ground_plane.get_polygons_string())
+print(circuit.get_sonnet_string())
 plt.figure()
 
-polygons=ground_plane.get_polygons()
+polygons=circuit.get_polygons()
 num = len(polygons)
 # creates a set of colours using the red colourmap
 colors = plt.cm.Reds(np.linspace(0.2, 1, num))
@@ -649,7 +759,7 @@ for i in range(num):
     x,y = polygons[i].get_points()
     plt.fill(x,y,color=colors[i])
 
-
+"""
 polygons=capacitor.get_polygons()
 num = len(polygons)
 # creates a set of colours using the Blue colourmap
@@ -666,7 +776,7 @@ colors = plt.cm.Greens(np.linspace(0.2, 1, num))
 for i in range(num):
     x,y = polygons[i].get_points()
     plt.fill(x,y,color=colors[i])
-
+"""
 
 x,y = ground_plane.get_port_coords()
 plt.plot(x,y,'s',color="goldenrod")
