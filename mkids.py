@@ -732,7 +732,7 @@ ground_plane = GroundPlane(x_size=500.0, y_size=500.0,
                            start_polygon_id=100)
 
 capacitor = Capacitor(finger_p=4.0, finger_b=2.0, finger_l=450.0, num_fingers=27, finger_lf=84.0,
-                      side_b=7.0, top_b=10.0, transfer_b=4, transfer_0=250.0,
+                      side_b=7.0, top_b=10.0, transfer_b=5.0, transfer_0=250.0,
                       ij_start=240.0, ij_end=243.0)
 
 
