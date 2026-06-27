@@ -438,7 +438,6 @@ class GroundPlane(Geometry):
         args.x_size        -> self.x_size
         args.y_size        -> self.y_size
         resonator_top      -> self.resonator_top
-        resonator_left     -> self.resonator_left
         resonator_bottom   -> self.resonator_bottom
         gp_sidebar_breadth -> self.sidebar_b
         feed_line_breadth  -> self.feed_line_b
@@ -448,26 +447,29 @@ class GroundPlane(Geometry):
     """
 
     def __init__(self,
+                 x0=0.0, y0=0.0,
                  x_size=0.0, y_size=0.0,
-                 resonator_top=0.0, resonator_left=0.0, resonator_bottom=0.0,
-                 sidebar_b=0.0, feed_line_b=0.0, opp_b=0.0,
-                 feed_line_space=0.0, gp_split=0.0,
+                 top_b=0.0, side_b=0.0, near_b=0.0, feed_b=0.0, oppo_b=0.0,
+                 res_yl=0.0,          
+                 feed_s=0.0, gp_split=0.0,
                  start_polygon_id=100):
         super().__init__(start_polygon_id)
         self.__ports = []
+        self.x0 = x0
+        self.y0 = y0
         # overall circuit size
         self.x_size = x_size
         self.y_size = y_size
         # resonator extents (shared boundary with the resonator)
-        self.resonator_top = resonator_top
-        self.resonator_left = resonator_left
-        self.resonator_bottom = resonator_bottom
+        self.res_yl = res_yl
         # bar breadths
-        self.sidebar_b = sidebar_b          # resonator sidebars and near bar
-        self.feed_line_b = feed_line_b      # feed line
-        self.opp_b = opp_b                  # opposite bar
+        self.top_b = top_b    # top bar before the resonator
+        self.side_b = side_b  # resonator sidebars
+        self.near_b = near_b  # near bar between resonator and feed line
+        self.feed_b = feed_b  # feed line
+        self.oppo_b = oppo_b  # bar opposite the feed line
         # vertical gap around the feed line, and the y at which the final bar starts
-        self.feed_line_space = feed_line_space
+        self.feed_s = feed_s
         self.gp_split = gp_split
 
     # ------------------------------------------------------------------ #
@@ -475,25 +477,41 @@ class GroundPlane(Geometry):
     # ------------------------------------------------------------------ #
     def generate(self):
         """Build all ground-plane polygons and ports."""
-        origin_x, origin_y, direction = 0, 0, 1
-
+        origin_x, origin_y, direction = self.x0, self.y0, 1
         # top bar: full width, from the top of the circuit down to the resonator
-        self._rect(origin_x, origin_y, direction, 0, 0, self.x_size, self.resonator_top)
+        # left and right sidebars, running down either side of the resonator
+        # final bar: full width, from the split line to the bottom of the circuit
+        rects = [
+            # dx,               dy,             width,            length
+            (0,                 0,              self.x_size,        self.top_b),       # top bar
+            (0,                 self.top_b,     self.side_b,     self.res_yl),      # left side bar
+            (self._res_xf(),    self.top_b,     self.side_b,     self.res_yl),      # right side bar
+            (0,                 self.gp_split,  self.x_size,        self._final_b()),  # final bar
+        ]
+
+        for r in rects:
+            self._rect(origin_x, origin_y, direction, *r) 
+        """
+        # top bar: full width, from the top of the circuit down to the resonator
+        self._rect(origin_x, origin_y, direction, 0, 0, self.x_size, self.top_b)
         # left and right sidebars, running down either side of the resonator
         self._rect(origin_x, origin_y, direction,
-                   0, self.resonator_top, self.resonator_left, self._sidebar_length())
+                   0, self.top_b, self.resonator_left, self._sidebar_length())
         self._rect(origin_x, origin_y, direction,
-                   self.x_size - self.sidebar_b, self.resonator_top, self.sidebar_b, self._sidebar_length())
-
+                   self.x_size - self.sidebar_b, self.top_b, self.sidebar_b, self._sidebar_length())
+        """
+        port_num_ground = -1
+        port_num_feed_l = 2
+        port_num_feed_r = 1
         # near bar with ports, just below the resonator
-        near_bottom = self._port_bar(self.resonator_bottom, self.sidebar_b, -1, -1)
+        self._port_bar(self._near_y0(), self.near_b, port_num_ground, port_num_ground)
         # feed line with ports
-        feed_bottom = self._port_bar(near_bottom + self.feed_line_space, self.feed_line_b, 2, 1)
+        self._port_bar(self._feed_y0(), self.feed_b, port_num_feed_l, port_num_feed_r)
         # opposite ground-plane bar with ports
-        self._port_bar(feed_bottom + self.feed_line_space, self.opp_b, -1, -1)
+        self._port_bar(self._oppo_y0(), self.oppo_b, port_num_ground, port_num_ground)
 
         # final bar: full width, from the split line to the bottom of the circuit
-        self._rect(origin_x, origin_y, direction, 0, self.gp_split, self.x_size, self.y_size - self.gp_split)
+        #self._rect(origin_x, origin_y, direction, 0, self.gp_split, self.x_size, self.y_size - self.gp_split)
 
     def add_port(self, port):
         self.__ports.append(port)
@@ -518,12 +536,39 @@ class GroundPlane(Geometry):
             out_string += "\n{}".format(port.gen_sonnet_port())
         return out_string
 
+    def get_res_origin(self):
+        return self._res_x0(), self._res_y0()
+
     # ------------------------------------------------------------------ #
     # Internal calculated properties
     # ------------------------------------------------------------------ #
-    def _sidebar_length(self):
-        # vertical span of the resonator sidebars
-        return self.resonator_bottom - self.resonator_top
+    def _xf(self):
+        return self.x0 + self.x_size
+    def _yf(self):
+        return self.y0 + self.y_size
+    def _res_x0(self):
+        return self.x0 + self.side_b
+    def _res_xf(self):
+        return self._xf() - self.side_b
+    def _res_y0(self):
+        return self.y0 + self.top_b
+    def _res_yf(self):
+        return self._res_y0() + self.res_yl
+    def _near_y0(self):
+        return self._res_yf()
+    def _near_yf(self):
+        return self._near_y0() + self.near_b
+    def _feed_y0(self):
+        return self._near_yf() + self.feed_s
+    def _feed_yf(self):
+        return self._feed_y0() + self.feed_b
+    def _oppo_y0(self):
+        return self._feed_yf() + self.feed_s
+    def _opp_yf(self):
+        return self._oppo_y0() + self.oppo_b
+    def _final_b(self):
+        return self._yf() - self._opp_yf()
+
 
     # ------------------------------------------------------------------ #
     # Internal geometry helpers
@@ -536,24 +581,22 @@ class GroundPlane(Geometry):
         :param port_num_l / port_num_r: port numbers for the left/right edges
         :return: y-coordinate of the bar's bottom edge
         """
-        bottom = top + breadth
-        left = 0
-        right = self.x_size
+        origin_x, origin_y, direction = self.x0, self.y0, 1
+        dx = 0
 
         # the bar takes the next polygon id; capture it so the ports can reference it
         bar_id = self.get_current_polygon()
-        self._rect(0, 0, 1, left, top, right - left, breadth)
+        self._rect(origin_x, origin_y, direction, dx, top, self.x_size, breadth)
 
         # NOTE: kept from the original, but this puts the ports at top + 1.5*breadth
         # (below the bar), not the bar's vertical midpoint. If the midpoint was
         # intended, this should be top + (breadth / 2).
         midpoint = top + (breadth / 2)
-
+        left = origin_x
+        right = self._xf()
         # the original emits the right port before the left port
-        self.add_port(Port(right, midpoint, port_num_r, reference_plane_r, bar_id))
         self.add_port(Port(left,  midpoint, port_num_l, reference_plane_l, bar_id))
-
-        return bottom        
+        self.add_port(Port(right, midpoint, port_num_r, reference_plane_r, bar_id))      
 
 
 class resonator(object):
@@ -566,9 +609,9 @@ class resonator(object):
         self.__capacitor = Capacitor()
 
 ground_plane = GroundPlane(x_size=500.0, y_size=500.0,
-                           resonator_top=500.0-348.0, resonator_left=12.0, resonator_bottom=500-173,
-                           sidebar_b=12.0, feed_line_b=35.0, opp_b=25.0,
-                           feed_line_space=5.0, gp_split=409.0,
+                           top_b=500.0-348.0, res_yl=348-173,
+                           side_b=12.0, near_b=12.0, feed_b=35.0, oppo_b=25.0,
+                           feed_s=5.0, gp_split=409.0,
                            start_polygon_id=100)
 ground_plane.generate()
 
@@ -594,7 +637,8 @@ inductor.generate()
 
 
 #polygons=inductor.get_polygons()
-print(inductor.get_polygons_string())
+print(ground_plane.get_ports_string())
+print(ground_plane.get_polygons_string())
 plt.figure()
 
 polygons=ground_plane.get_polygons()
