@@ -34,10 +34,12 @@ class polygon(object):
             out_text += "\n{} {}".format(x, y)
         # Close the polygon by returning to the first point
         out_text += "\n{} {}".format(self.__x_coords[0], self.__y_coords[0]) 
+        # finalise the polygon with the text "END"
+        out_text += "\nEND"
         return out_text
 
 
-class rectangle(polygon):
+class Rectangle(polygon):
     def __init__(self, x_0, y_0, dx, dy, polygon_id):
         super().__init__(polygon_id=polygon_id)
         self.set_start_height_breadth(x_0, y_0, dx, dy)
@@ -50,6 +52,37 @@ class rectangle(polygon):
             self.add_point(x_0 + dx,    y_0)
             self.add_point(x_0 + dx,    y_0 + dy)
             self.add_point(x_0,         y_0 + dy)
+
+
+
+class Port(object):
+    """
+    A Sonnet port attached to one edge of a polygon. Replaces the gen_port()
+    function. The global ``polygon_name`` that gen_port read is now an explicit
+    ``polygon_id`` -- the id of the polygon the port sits on -- passed in at
+    construction. Call ``gen_sonnet_port()`` to render the .son definition.
+    """
+
+    def __init__(self, x, y, port_num, reference_plane, polygon_id,
+                 port_type="BOX", resistance=50, reactance=0, inductance=0, capacitance=0):
+        self.x = x                          # port x-coordinate (micrometres)
+        self.y = y                          # port y-coordinate (micrometres)
+        self.port_num = port_num            # Sonnet port number
+        self.reference_plane = reference_plane
+        self.polygon_id = polygon_id        # id of the polygon this port attaches to
+        self.port_type = port_type
+        self.resistance = resistance
+        self.reactance = reactance
+        self.inductance = inductance
+        self.capacitance = capacitance
+
+    def gen_sonnet_port(self):
+        """Return the .son port-definition string."""
+        return ("POR1 {}\n".format(self.port_type) +
+                "POLY {} 1\n".format(self.polygon_id) +
+                "{}\n".format(self.reference_plane) +
+                "{} {} {} {} {} {} {}".format(self.port_num, self.resistance, self.reactance,
+                                              self.inductance, self.capacitance, self.x, self.y))
 
 
 class Geometry(object):
@@ -81,7 +114,7 @@ class Geometry(object):
         x0 = origin_x + (direction * dx)
         y0 = origin_y + dy
         
-        self.add_polygon(rectangle(x0, y0, (direction * width), length, polygon_id=self.__current_polygon_id))
+        self.add_polygon(Rectangle(x0, y0, (direction * width), length, polygon_id=self.__current_polygon_id))
         self.__current_polygon_id = self.__current_polygon_id + 1
 
 class Capacitor(Geometry):
@@ -125,7 +158,7 @@ class Capacitor(Geometry):
                  x0=0.0, y0=0.0, xf=0.0, yf=0.0,
                  side_b=0.0, top_b=0.0, transfer_b=0, transfer_0=0.0,
                  ij_start=0.0, ij_end=0.0, start_polygon_id=100):
-        super().__init__()
+        super().__init__(start_polygon_id)
         # finger properties (formerly read from args)
         self.finger_p = finger_p              # centre-to-centre finger spacing
         self.finger_b = finger_b          # finger thickness
@@ -382,7 +415,145 @@ class Inductor(Geometry):
         ]
         for r in rects:
             self._rect(origin_x, origin_y, direction, *r) 
-        
+
+
+class GroundPlane(Geometry):
+    """
+    Generates Sonnet (.son) polygon code for the ground plane: a top bar, two
+    resonator sidebars, three full-width horizontal bars carrying edge ports
+    (the near bar, the feed line, and the opposite bar), and a final bar.
+
+    Like the other Geometry subclasses, shapes are built by calling the
+    inherited ``_rect`` primitive; rendered via ``get_polygons_string()``.
+    Ports are a ground-plane-specific concept, so they are kept in a local list
+    and rendered via ``get_ports_string()`` -- mirroring the two strings the
+    original gen_ground_plane() returned (ports, polygons).
+
+        gp = GroundPlane(x_size=..., y_size=..., resonator_top=..., ...)
+        gp.generate()
+        polygons = gp.get_polygons_string()
+        ports = gp.get_ports_string()
+
+    Former globals map to attributes as follows:
+        args.x_size        -> self.x_size
+        args.y_size        -> self.y_size
+        resonator_top      -> self.resonator_top
+        resonator_left     -> self.resonator_left
+        resonator_bottom   -> self.resonator_bottom
+        gp_sidebar_breadth -> self.sidebar_b
+        feed_line_breadth  -> self.feed_line_b
+        gp_opp_breadth     -> self.opp_b
+        feed_line_space    -> self.feed_line_space
+        gp_split           -> self.gp_split
+    """
+
+    def __init__(self,
+                 x_size=0.0, y_size=0.0,
+                 resonator_top=0.0, resonator_left=0.0, resonator_bottom=0.0,
+                 sidebar_b=0.0, feed_line_b=0.0, opp_b=0.0,
+                 feed_line_space=0.0, gp_split=0.0,
+                 start_polygon_id=100):
+        super().__init__(start_polygon_id)
+        self.__ports = []
+        # overall circuit size
+        self.x_size = x_size
+        self.y_size = y_size
+        # resonator extents (shared boundary with the resonator)
+        self.resonator_top = resonator_top
+        self.resonator_left = resonator_left
+        self.resonator_bottom = resonator_bottom
+        # bar breadths
+        self.sidebar_b = sidebar_b          # resonator sidebars and near bar
+        self.feed_line_b = feed_line_b      # feed line
+        self.opp_b = opp_b                  # opposite bar
+        # vertical gap around the feed line, and the y at which the final bar starts
+        self.feed_line_space = feed_line_space
+        self.gp_split = gp_split
+
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
+    def generate(self):
+        """Build all ground-plane polygons and ports."""
+        origin_x, origin_y, direction = 0, 0, 1
+
+        # top bar: full width, from the top of the circuit down to the resonator
+        self._rect(origin_x, origin_y, direction, 0, 0, self.x_size, self.resonator_top)
+        # left and right sidebars, running down either side of the resonator
+        self._rect(origin_x, origin_y, direction,
+                   0, self.resonator_top, self.resonator_left, self._sidebar_length())
+        self._rect(origin_x, origin_y, direction,
+                   self.x_size - self.sidebar_b, self.resonator_top, self.sidebar_b, self._sidebar_length())
+
+        # near bar with ports, just below the resonator
+        near_bottom = self._port_bar(self.resonator_bottom, self.sidebar_b, -1, -1)
+        # feed line with ports
+        feed_bottom = self._port_bar(near_bottom + self.feed_line_space, self.feed_line_b, 2, 1)
+        # opposite ground-plane bar with ports
+        self._port_bar(feed_bottom + self.feed_line_space, self.opp_b, -1, -1)
+
+        # final bar: full width, from the split line to the bottom of the circuit
+        self._rect(origin_x, origin_y, direction, 0, self.gp_split, self.x_size, self.y_size - self.gp_split)
+
+    def add_port(self, port):
+        self.__ports.append(port)
+
+    def get_ports(self):
+        return self.__ports
+
+    def get_port_coords(self):
+        """
+        Extract the coordinates of every port on the ground plane.
+        :return: (x_coords, y_coords) -- two parallel lists, matching the
+                 convention of polygon.get_points() and ready to pass to
+                 plt.scatter for plotting.
+        """
+        x_coords = [port.x for port in self.__ports]
+        y_coords = [port.y for port in self.__ports]
+        return x_coords, y_coords
+
+    def get_ports_string(self):
+        out_string = ""
+        for port in self.__ports:
+            out_string += "\n{}".format(port.gen_sonnet_port())
+        return out_string
+
+    # ------------------------------------------------------------------ #
+    # Internal calculated properties
+    # ------------------------------------------------------------------ #
+    def _sidebar_length(self):
+        # vertical span of the resonator sidebars
+        return self.resonator_bottom - self.resonator_top
+
+    # ------------------------------------------------------------------ #
+    # Internal geometry helpers
+    # ------------------------------------------------------------------ #
+    def _port_bar(self, top, breadth, port_num_l, port_num_r, reference_plane_l=1, reference_plane_r=3):
+        """
+        Draw a full-width horizontal bar and attach a port to each end.
+        :param top: y-coordinate of the bar's top edge
+        :param breadth: vertical thickness of the bar
+        :param port_num_l / port_num_r: port numbers for the left/right edges
+        :return: y-coordinate of the bar's bottom edge
+        """
+        bottom = top + breadth
+        left = 0
+        right = self.x_size
+
+        # the bar takes the next polygon id; capture it so the ports can reference it
+        bar_id = self.get_current_polygon()
+        self._rect(0, 0, 1, left, top, right - left, breadth)
+
+        # NOTE: kept from the original, but this puts the ports at top + 1.5*breadth
+        # (below the bar), not the bar's vertical midpoint. If the midpoint was
+        # intended, this should be top + (breadth / 2).
+        midpoint = top + (breadth / 2)
+
+        # the original emits the right port before the left port
+        self.add_port(Port(right, midpoint, port_num_r, reference_plane_r, bar_id))
+        self.add_port(Port(left,  midpoint, port_num_l, reference_plane_l, bar_id))
+
+        return bottom        
 
 
 class resonator(object):
@@ -394,19 +565,24 @@ class resonator(object):
         self.__inductor = Inductor()
         self.__capacitor = Capacitor()
 
-
-
+ground_plane = GroundPlane(x_size=500.0, y_size=500.0,
+                           resonator_top=500.0-348.0, resonator_left=12.0, resonator_bottom=500-173,
+                           sidebar_b=12.0, feed_line_b=35.0, opp_b=25.0,
+                           feed_line_space=5.0, gp_split=409.0,
+                           start_polygon_id=100)
+ground_plane.generate()
 
 capacitor = Capacitor(finger_p=4.0, finger_b=2.0, finger_l=450.0, num_fingers=27, finger_lf=84.0,
-                 x0=17.0, y0=500.0-343, xf=483.0, yf=500-175.0,
+                 x0=17.0, y0=500.0-324, xf=483.0, yf=500-177.0,
                  side_b=7.0, top_b=10.0, transfer_b=4, transfer_0=250.0,
-                 ij_start=240.0, ij_end=243.0)
+                 ij_start=240.0, ij_end=243.0,
+                 start_polygon_id=ground_plane.get_current_polygon())
 capacitor.generate()
 
 ind_x0, ind_y0 = capacitor.gen_ij_origin()
 start_ind_polygon_id = capacitor.get_current_polygon()
 
-inductor = Inductor(turns=6,
+inductor = Inductor(turns=5,
             breadth=1.0,
             space=1.0,
             length=20.0,
@@ -416,16 +592,24 @@ inductor = Inductor(turns=6,
             start_polygon_id=start_ind_polygon_id)
 inductor.generate()
 
-polygons=capacitor.get_polygons()
+
 #polygons=inductor.get_polygons()
 print(inductor.get_polygons_string())
 plt.figure()
 
+polygons=ground_plane.get_polygons()
 num = len(polygons)
+# creates a set of colours using the red colourmap
+colors = plt.cm.Reds(np.linspace(0.2, 1, num))
+for i in range(num):
+    x,y = polygons[i].get_points()
+    plt.fill(x,y,color=colors[i])
 
+
+polygons=capacitor.get_polygons()
+num = len(polygons)
 # creates a set of colours using the Blue colourmap
 colors = plt.cm.Blues(np.linspace(0.2, 1, num))
-
 for i in range(num):
     x,y = polygons[i].get_points()
     plt.fill(x,y,color=colors[i])
@@ -433,10 +617,15 @@ for i in range(num):
 
 polygons=inductor.get_polygons()
 num = len(polygons)
+# creates a set of colours using the Greens colourmap
+colors = plt.cm.Greens(np.linspace(0.2, 1, num))
 for i in range(num):
     x,y = polygons[i].get_points()
-    plt.fill(x,y,color="green")
+    plt.fill(x,y,color=colors[i])
 
+
+x,y = ground_plane.get_port_coords()
+plt.plot(x,y,'s',color="goldenrod")
 
 plt.show()
 
