@@ -1,3 +1,5 @@
+from curses import meta
+
 from matplotlib import pyplot as plt
 import numpy as np
 
@@ -50,8 +52,8 @@ class polygon(object):
 
 
 class Rectangle(polygon):
-    def __init__(self, x_0, y_0, dx, dy, polygon_id):
-        super().__init__(polygon_id=polygon_id)
+    def __init__(self, x_0, y_0, dx, dy, polygon_id=100, metal=0):
+        super().__init__(polygon_id=polygon_id, metal=metal)
         self.set_start_height_breadth(x_0, y_0, dx, dy)
     def set_start_height_breadth(self, x_0, y_0, dx, dy):
         if self.get_num_points() > 0:
@@ -96,9 +98,10 @@ class Port(object):
 
 
 class Component(object):
-    def __init__(self, start_polygon_id=100):
+    def __init__(self, start_polygon_id=100, metal=0):
         self.__polygons = []
         self.__current_polygon_id = start_polygon_id
+        self.__metal = metal
     
     def get_polygons(self):
         return self.__polygons
@@ -126,7 +129,7 @@ class Component(object):
         x0 = origin_x + (direction * dx)
         y0 = origin_y + dy
         
-        self.add_polygon(Rectangle(x0, y0, (direction * width), length, polygon_id=self.__current_polygon_id))
+        self.add_polygon(Rectangle(x0, y0, (direction * width), length, polygon_id=self.__current_polygon_id, metal=self.__metal))
         self.__current_polygon_id = self.__current_polygon_id + 1
 
 class Capacitor(Component):
