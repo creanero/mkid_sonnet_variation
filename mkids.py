@@ -860,6 +860,62 @@ circuit = Circuit(ground_plane=ground_plane, capacitor=capacitor, inductor=induc
 
 circuit.generate()
 
+import decimal
+
+
+class Box(object):
+    """
+    Generates the Sonnet "BOX" line, which sets the substrate size and the
+    meshing grid:
+
+        BOX <nlev> <x_size> <y_size> <x_cells2> <y_cells2> <nsubs> <eeff>
+
+    x_cells2 / y_cells2 are *twice* the number of cells along each axis (a
+    Sonnet convention), derived from the box size and the desired per-axis
+    cell size (x_scale / y_scale). Decimal arithmetic is used throughout so
+    that sizes such as 0.3 / 0.1 don't pick up floating-point error (which
+    would otherwise floor 5.999... to 5 cells instead of 6).
+
+    nlev defaults to 1 (number of dielectric levels). nsubs and eeff default
+    to the trailing values the original code emitted (20 and 0); confirm their
+    meaning against your Sonnet version before changing them.
+    """
+
+    def __init__(self, x_size=0.0, y_size=0.0, x_scale=1.0, y_scale=1.0,
+                 nlev=1, nsubs=20, eeff=0):
+        self.x_size = x_size      # box width in x (micrometres)
+        self.y_size = y_size      # box width in y (micrometres)
+        self.x_scale = x_scale    # desired maximum cell size in x (micrometres)
+        self.y_scale = y_scale    # desired maximum cell size in y (micrometres)
+        self.nlev = nlev          # number of dielectric levels (the leading "1")
+        self.nsubs = nsubs        # trailing BOX field (20 in the original)
+        self.eeff = eeff          # trailing BOX field (0 in the original)
+
+        # generates safe size parameters (integer multiples of the scale size)
+        # and number of cells (doubled because of Sonnet conventions)
+        self.safe_x_size, self.x_cells2 = self._safe_scale(self.x_size, self.x_scale)
+        self.safe_y_size, self.y_cells2 = self._safe_scale(self.y_size, self.y_scale)
+
+    def _safe_scale(self, size, scale):
+        """
+        Returns a size parameter that is an integer number of unit cells, and 
+        a number representing the number of unit cells
+        Twice the number of cells along an axis (Sonnet convention), computed
+        with Decimal to avoid floating-point error.
+        """
+        dec_size = decimal.Decimal(str(size))
+        dec_scale = decimal.Decimal(str(scale))
+        # removes any remainder from the size dimension
+        safe_size = dec_size - (dec_size % dec_scale)
+        # calculates the number of boxes needed (doubled for Sonnet reasons)
+        safe_boxes = (2 * dec_size) // dec_scale
+        return safe_size, safe_boxes
+
+    def gen_sonnet_box(self):
+        """Return the .son BOX line."""
+        return "BOX {} {} {} {} {} {} {}".format(
+            self.nlev, self.safe_x_size, self.safe_y_size, self.x_cells2, self.y_cells2, self.nsubs, self.eeff)
+
 
 #polygons=inductor.get_polygons()
 print(circuit.get_sonnet_string())
