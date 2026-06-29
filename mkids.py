@@ -1,7 +1,11 @@
+from operator import ge
+
 from matplotlib import pyplot as plt
 import numpy as np
 import decimal
-import datetime
+from datetime import datetime
+
+import os
 
 
 class Header(object):
@@ -1204,6 +1208,235 @@ class Geometry(object):
         text += "\nEND GEO"
         return text
 
+class Opt(object):
+    """
+    The OPT block (optimisation settings):
+
+        OPT
+        MAX <max_iterations>
+        END OPT
+
+    max_iterations is the OPT block's MAX field (the iteration cap in the
+    template); defaults to the template value.
+    """
+
+    def __init__(self, max_iterations=100):
+        self.max_iterations = max_iterations
+
+    def gen_sonnet_opt(self):
+        """Return the OPT ... END OPT block."""
+        return "\n".join(["OPT", "MAX {}".format(self.max_iterations), "END OPT"])
+
+
+class VarSweep(object):
+    """
+    The VARSWP block (frequency sweep):
+
+        VARSWP
+        ENABLED <enabled>
+        FREQ <freq_enabled> <adaptive> <entry_type> <f1> <f2> <n_freqs> <max_freqs>
+        END
+        END VARSWP
+
+    The genuinely tunable parts are the sweep band (f1, f2), the frequency
+    count (n_freqs, -1 meaning automatic for an adaptive sweep), and the cap
+    (max_freqs). freq_enabled / adaptive / entry_type are structural tokens
+    reproduced from the template (an adaptive ABS sweep); confirm them against
+    your Sonnet version before changing.
+    """
+
+    def __init__(self, enabled="Y", freq_enabled="Y", adaptive="AY", entry_type="ABS_ENTRY",
+                 f1=3.0, f2=6.0, n_freqs=-1, max_freqs=2000):
+        self.enabled = enabled
+        self.freq_enabled = freq_enabled
+        self.adaptive = adaptive
+        self.entry_type = entry_type
+        self.f1 = f1                  # sweep start (GHz)
+        self.f2 = f2                  # sweep end (GHz)
+        self.n_freqs = n_freqs        # number of frequencies (-1 = automatic)
+        self.max_freqs = max_freqs    # maximum number of frequencies
+
+    def gen_sonnet_varsweep(self):
+        """Return the VARSWP ... END VARSWP block."""
+        lines = [
+            "VARSWP",
+            "ENABLED {}".format(self.enabled),
+            "FREQ {} {} {} {} {} {} {}".format(self.freq_enabled, self.adaptive, self.entry_type,
+                                               self.f1, self.f2, self.n_freqs, self.max_freqs),
+            "END",
+            "END VARSWP",
+        ]
+        return "\n".join(lines)
+
+
+class FileOut(object):
+    """
+    The FILEOUT block (response-data output file):
+
+        FILEOUT
+        <file_type> <pre_flags> <filename> <post_flags>
+        FOLDER <folder>
+        END FILEOUT
+
+    filename and folder are the obvious knobs (filename supports Sonnet's
+    $BASENAME variable). The CSV format specifiers around the filename are kept
+    as pre_flags / post_flags strings reproduced verbatim from the template,
+    since their individual tokens are Sonnet CSV-format codes; override the
+    whole string if you need a different export format.
+    """
+
+    def __init__(self, file_type="CSV", pre_flags="D Y", filename="$BASENAME.csv",
+                 post_flags="NC 15 S MA R 50", folder="."):
+        self.file_type = file_type
+        self.pre_flags = pre_flags
+        self.filename = filename
+        self.post_flags = post_flags
+        self.folder = folder
+
+    def gen_sonnet_fileout(self):
+        """Return the FILEOUT ... END FILEOUT block."""
+        lines = [
+            "FILEOUT",
+            "{} {} {} {}".format(self.file_type, self.pre_flags, self.filename, self.post_flags),
+            "FOLDER {}".format(self.folder),
+            "END FILEOUT",
+        ]
+        return "\n".join(lines)
+
+
+class Translator(object):
+    """
+    The TRANSLATOR block and its GDSEXPORT sub-block (GDS export options):
+
+        TRANSLATOR
+        GDSEXPORT
+        UseTLs <bool> ... AllEdgeViasAsVia <bool>
+        END
+        END TRANSLATOR
+
+    Each GDSEXPORT line is a self-named option. The boolean options are stored
+    as Python bools and rendered as lowercase true/false; circle_type and
+    circle_size carry their own values. All default to the template.
+    """
+
+    def __init__(self, use_tls=True, sep_obj=False, sep_mat=True, divide_multi=False,
+                 circles=False, circle_type="inscribed", circle_size=0,
+                 keep_metals=True, keep_vias=False, keep_via_pads=False, keep_bricks=True,
+                 keep_edge_vias=False, keep_parent=False, convert_parent=False,
+                 all_edge_vias_as_via=False):
+        self.use_tls = use_tls
+        self.sep_obj = sep_obj
+        self.sep_mat = sep_mat
+        self.divide_multi = divide_multi
+        self.circles = circles
+        self.circle_type = circle_type
+        self.circle_size = circle_size
+        self.keep_metals = keep_metals
+        self.keep_vias = keep_vias
+        self.keep_via_pads = keep_via_pads
+        self.keep_bricks = keep_bricks
+        self.keep_edge_vias = keep_edge_vias
+        self.keep_parent = keep_parent
+        self.convert_parent = convert_parent
+        self.all_edge_vias_as_via = all_edge_vias_as_via
+
+    @staticmethod
+    def _bool(value):
+        """Render a Python bool as Sonnet's lowercase true/false."""
+        return "true" if value else "false"
+
+    def gen_sonnet_translator(self):
+        """Return the TRANSLATOR ... END TRANSLATOR block."""
+        b = self._bool
+        lines = [
+            "TRANSLATOR",
+            "GDSEXPORT",
+            "UseTLs {}".format(b(self.use_tls)),
+            "SepObj {}".format(b(self.sep_obj)),
+            "SepMat {}".format(b(self.sep_mat)),
+            "DivideMulti {}".format(b(self.divide_multi)),
+            "Circles {}".format(b(self.circles)),
+            "CircleType {}".format(self.circle_type),
+            "CircleSize {}".format(self.circle_size),
+            "KeepMetals {}".format(b(self.keep_metals)),
+            "KeepVias {}".format(b(self.keep_vias)),
+            "KeepViaPads {}".format(b(self.keep_via_pads)),
+            "KeepBricks {}".format(b(self.keep_bricks)),
+            "KeepEdgeVias {}".format(b(self.keep_edge_vias)),
+            "KeepParent {}".format(b(self.keep_parent)),
+            "ConvertParent {}".format(b(self.convert_parent)),
+            "AllEdgeViasAsVia {}".format(b(self.all_edge_vias_as_via)),
+            "END",
+            "END TRANSLATOR",
+        ]
+        return "\n".join(lines)
+
+
+class Tail(object):
+    """
+    Bundles the OPT, VARSWP, FILEOUT, and TRANSLATOR blocks into the .son tail,
+    replacing the old gen_tail() that read tail.son from a template. Each part
+    defaults to its own template-matching values, so Tail().gen_sonnet_tail()
+    reproduces the original template; pass custom Opt / VarSweep / FileOut /
+    Translator objects to override any of them.
+
+        tail = Tail()
+        text = tail.gen_sonnet_tail()
+    """
+
+    def __init__(self, opt=None, varsweep=None, fileout=None, translator=None):
+        self.opt = opt if opt is not None else Opt()
+        self.varsweep = varsweep if varsweep is not None else VarSweep()
+        self.fileout = fileout if fileout is not None else FileOut()
+        self.translator = translator if translator is not None else Translator()
+
+    def gen_sonnet_tail(self):
+        """Return the full tail: OPT, then VARSWP, then FILEOUT, then TRANSLATOR."""
+        return "\n".join([
+            self.opt.gen_sonnet_opt(),
+            self.varsweep.gen_sonnet_varsweep(),
+            self.fileout.gen_sonnet_fileout(),
+            self.translator.gen_sonnet_translator(),
+        ])
+
+class Mkid(object):
+    """
+    Top-level assembler for a complete Sonnet .son file. Holds a Preamble, a
+    Geometry, and a Tail, and concatenates their .son representations -- this
+    replaces the old gen_text(), which joined gen_preamble(), gen_geometry()
+    and gen_tail() with newlines.
+
+    The Geometry must be supplied (it carries the circuit, metals, box and
+    dielectrics). The Preamble and Tail default to their template-matching
+    versions, so for the common case you only pass the geometry:
+
+        mkid = Mkid(geometry)
+        son_text = mkid.gen_sonnet_mkid()
+
+    Pass custom Preamble / Tail objects to override the header, units, control,
+    sweep, output or translator settings:
+
+        mkid = Mkid(geometry, preamble=Preamble(...), tail=Tail(...))
+
+    To write the file, hand the string to your existing file-writing routine,
+    e.g. write_son(mkid.gen_sonnet_mkid()).
+    """
+
+    def __init__(self, geometry, preamble=None, tail=None):
+        self.geometry = geometry
+        self.preamble = preamble if preamble is not None else Preamble()
+        self.tail = tail if tail is not None else Tail()
+
+    def gen_sonnet_mkid(self):
+        """Return the full .son file: preamble, then geometry, then tail."""
+        return "\n".join([
+            self.preamble.gen_sonnet_preamble(),
+            self.geometry.gen_sonnet_geometry(),
+            self.tail.gen_sonnet_tail(),
+        ])
+
+
+
 metals = MetalList()
 metals.add_metal(Metal.superconductor())
 
@@ -1236,8 +1469,16 @@ circuit.generate()
 
 geometry=Geometry(metal_list=metals, box=box, dielectrics=dielectrics, circuit=circuit)
 
+mkid=Mkid(geometry)
+
+
+text = mkid.gen_sonnet_mkid()
+out_path = os.path.expanduser('~/test/mkid_sonnet_variation/test_full.son')
+out_file = open(out_path, 'w')
+out_file.write(text)
+out_file.close()
 #polygons=inductor.get_polygons()
-print(geometry.gen_sonnet_geometry())
+#print(geometry.gen_sonnet_geometry())
 """
 plt.figure()
 
