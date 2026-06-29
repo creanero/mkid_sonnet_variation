@@ -725,6 +725,75 @@ class Circuit(object):
 
 
 
+class Dielectric(object):
+    """
+    Represents a Sonnet dielectric layer and renders it to .son format.
+
+    Properties:
+        name                  -- layer name (string), emitted in double quotes
+        thickness             -- layer thickness (float)
+        erel                  -- relative permittivity (float)
+        mrel                  -- relative permeability (float)
+        dielectric_loss_tan   -- dielectric loss tangent (float)
+        conductivity          -- dielectric conductivity (float)
+        mag_loss_tan          -- magnetic loss tangent (float)
+        anisotropic           -- bool. When True, a second set of every float
+                                 property except thickness is required (the
+                                 *_2 attributes), describing the second
+                                 (normal) direction.
+
+    All parameters can be set via the constructor or by assignment afterwards.
+    The *_2 attributes default to None; they only need values when anisotropic
+    is True, at which point gen_sonnet_dielectric() enforces that they are set.
+    """
+
+    def __init__(self, name="", thickness=0.0,
+                 erel=0.0, mrel=0.0, dielectric_loss_tan=0.0,
+                 conductivity=0.0, mag_loss_tan=0.0,
+                 anisotropic=False,
+                 erel_2=None, mrel_2=None, dielectric_loss_tan_2=None,
+                 conductivity_2=None, mag_loss_tan_2=None):
+        self.name = name
+        self.thickness = thickness
+        # first set of properties
+        self.erel = erel
+        self.mrel = mrel
+        self.dielectric_loss_tan = dielectric_loss_tan
+        self.conductivity = conductivity
+        self.mag_loss_tan = mag_loss_tan
+        self.anisotropic = anisotropic
+        # second set, required only when anisotropic is True
+        self.erel_2 = erel_2
+        self.mrel_2 = mrel_2
+        self.dielectric_loss_tan_2 = dielectric_loss_tan_2
+        self.conductivity_2 = conductivity_2
+        self.mag_loss_tan_2 = mag_loss_tan_2
+
+    def gen_sonnet_dielectric(self):
+        """
+        Return the space-separated .son representation of the layer:
+
+            thickness erel mrel dielectric_loss_tan conductivity mag_loss_tan "name"
+
+        and, when anisotropic, an 'A' flag followed by the second set:
+
+            ... "name" A erel_2 mrel_2 dielectric_loss_tan_2 conductivity_2 mag_loss_tan_2
+        """
+        first_set = [self.thickness, self.erel, self.mrel,
+                     self.dielectric_loss_tan, self.conductivity, self.mag_loss_tan]
+        out_text = " ".join(str(value) for value in first_set) + ' "{}"'.format(self.name)
+
+        if self.anisotropic:
+            second_set = [self.erel_2, self.mrel_2, self.dielectric_loss_tan_2,
+                          self.conductivity_2, self.mag_loss_tan_2]
+            if any(value is None for value in second_set):
+                raise ValueError("Anisotropic dielectric requires the second set "
+                                 "of properties (the *_2 attributes) to be set.")
+            out_text += " A " + " ".join(str(value) for value in second_set)
+
+        return out_text
+
+
 ground_plane = GroundPlane(x_size=500.0, y_size=500.0,
                            top_b=500.0-348.0, res_yl=348-173,
                            side_b=12.0, near_b=12.0, feed_b=35.0, oppo_b=25.0,
