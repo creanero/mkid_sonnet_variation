@@ -76,7 +76,7 @@ SPEC = [
     ("cap_transfer_b",  "Breadth of Transfer Bar",  "Capacitor", 5.0,   "y",     False),
     ("cap_transfer_0",  "Start Transfer Bar",  "Capacitor", 250.0, "x",     False),
     ("cir_cap_dx",      "Ground Plane spacing (x)",      "Capacitor", 4.0, "x", False),
-    ("cir_cap_dy",      "Ground Plane spacing (x)",      "Capacitor", 4.0, "y", False),
+    ("cir_cap_dy",      "Ground Plane spacing (y)",      "Capacitor", 4.0, "y", False),
     # Inductor
     ("ind_turns",       "Turns",       "Inductor", 5,    "count",   True),
     ("ind_breadth",     "Breadth",     "Inductor", 1.0,  "breadth", False),
