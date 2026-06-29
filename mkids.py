@@ -4,7 +4,7 @@ import decimal
 
 
 class polygon(object):
-    def __init__(self, layer=0, metal=0, polygon_id=100, anisotropic=False, subsect_xmin=1, subsect_ymin=1, subsect_xmax=100, subsect_ymax=100, edge_mesh=True):
+    def __init__(self, layer=0, metal=0, anisotropic=False, polygon_id=100, subsect_xmin=1, subsect_ymin=1, subsect_xmax=100, subsect_ymax=100, edge_mesh=True):
         self.__x_coords = []
         self.__y_coords = []
         self.__layer = layer  # label in order of the layers
@@ -37,7 +37,7 @@ class polygon(object):
     def gen_sonnet_polygon(self):
         # Generate the polygon in the Sonnet format
         # TODO: figure out the last few parameters.
-        out_text = "{} {} {} {} {} {} {} {} {} 0 0 0 {}".format(self.__layer, self.get_num_points(), self.__metal, self.__polygon_id, self._bool_to_YN(self.__anisotropic), self.__subsect_xmin, self.__subsect_ymin, self.__subsect_xmax, self.__subsect_ymax, self._bool_to_YN(self.__edge_mesh))
+        out_text = "{} {} {} {} {} {} {} {} {} 0 0 0 {}".format(self.__layer, self.get_num_points()+1, self.__metal, self._bool_to_YN(self.__anisotropic), self.__polygon_id, self.__subsect_xmin, self.__subsect_ymin, self.__subsect_xmax, self.__subsect_ymax, self._bool_to_YN(self.__edge_mesh))
         # iterate through the points and add them to the output text
         for x, y in zip(self.__x_coords, self.__y_coords):
             # Add each point to the output text on a new line
@@ -735,6 +735,7 @@ class Circuit(object):
         self.__capacitor.y0 = res_origin_y + (self.cap_dy + inductor_height)
         self.__capacitor.xf = res_end_x - self.cap_dx
         self.__capacitor.yf = res_end_y - self.cap_dy
+        self.__capacitor.ij_end = self.__capacitor.ij_start + self.__inductor._mid_l()
 
         # inductor sits at the capacitor's inductor-junction origin (depends on
         # the capacitor's y0, which was just set)
@@ -767,7 +768,7 @@ class Dielectric(object):
 
     def __init__(self, name="", thickness=0.0,
                  erel=0.0, mrel=0.0, dielectric_loss_tan=0.0,
-                 conductivity=0.0, mag_loss_tan=0.0,
+                 conductivity=0.0, mag_loss_tan=0.0, brick_z_partitions=0,
                  anisotropic=False,
                  erel_2=None, mrel_2=None, dielectric_loss_tan_2=None,
                  conductivity_2=None, mag_loss_tan_2=None):
@@ -780,12 +781,31 @@ class Dielectric(object):
         self.conductivity = conductivity
         self.mag_loss_tan = mag_loss_tan
         self.anisotropic = anisotropic
+        self.brick_z_partitions = brick_z_partitions
         # second set, required only when anisotropic is True
         self.erel_2 = erel_2
         self.mrel_2 = mrel_2
         self.dielectric_loss_tan_2 = dielectric_loss_tan_2
         self.conductivity_2 = conductivity_2
         self.mag_loss_tan_2 = mag_loss_tan_2
+        self.fix_none()
+
+    def fix_none(self):
+        """
+        Allows the *_2 parameters to default to the same as their base parameters
+        if they were not set by the user and anisotropic is true
+        """
+        if self.anisotropic:
+            if self.erel_2 is None:
+                self.rel_2 = self.erel
+            if self.mrel_2 is None:
+                self.mrel_2 = self.mrel
+            if self.dielectric_loss_tan_2 is None:
+                self.dielectric_loss_tan_2 = self.dielectric_loss_tan
+            if self.conductivity_2 is None:
+                self.conductivity_2 = self.conductivity
+            if self.mag_loss_tan_2 is None:
+                self.mag_loss_tan_2 = self.mag_loss_tan
 
     def gen_sonnet_dielectric(self):
         """
@@ -798,7 +818,7 @@ class Dielectric(object):
             ... "name" A erel_2 mrel_2 dielectric_loss_tan_2 conductivity_2 mag_loss_tan_2
         """
         first_set = [self.thickness, self.erel, self.mrel,
-                     self.dielectric_loss_tan, self.conductivity, self.mag_loss_tan]
+                     self.dielectric_loss_tan, self.conductivity, self.mag_loss_tan, self.brick_z_partitions]
         out_text = " ".join(str(value) for value in first_set) + ' "{}"'.format(self.name)
 
         if self.anisotropic:
@@ -828,15 +848,15 @@ class Metal(object):
     varied. Use the superconductor() helper for that case.
     """
 
-    def __init__(self, name="", metal_type="", pattern=1, parameters=None):
+    def __init__(self, name="", metal_type="", index=1, parameters=None):
         self.name = name              # metal name, emitted in double quotes
         self.metal_type = metal_type  # Sonnet type code, e.g. "SUP", "NOR", "RES"
-        self.pattern = pattern        # pattern/index field (the "1" in the example)
+        self.index = index        # pattern/index field (the "1" in the example)
         # type-specific values that follow the type code, in Sonnet's order
         self.parameters = list(parameters) if parameters is not None else []
 
     @classmethod
-    def superconductor(cls, name="superconductor", ls=0.0, rdc=0, rrf=0, xdc=0, pattern=1):
+    def superconductor(cls, name="superconductor", ls=0.0, rdc=0, rrf=0, xdc=0, index=1):
         """
         Build a superconductor (SUP) metal:
 
@@ -848,12 +868,12 @@ class Metal(object):
         original. (Confirm the exact term order against your Sonnet version if
         you ever set them to non-zero values.)
         """
-        return cls(name=name, metal_type="SUP", pattern=pattern,
+        return cls(name=name, metal_type="SUP", index=index,
                    parameters=[rdc, rrf, xdc, ls])
 
     def gen_sonnet_metal(self, keyword="MET"):
         """Return the .son metal line. keyword is the record type: MET, TMET, or BMET."""
-        parts = ['{} "{}"'.format(keyword, self.name), str(self.pattern), self.metal_type]
+        parts = ['{} "{}"'.format(keyword, self.name), str(self.index), self.metal_type]
         parts.extend(str(value) for value in self.parameters)
         return " ".join(parts)
 
@@ -884,8 +904,8 @@ class MetalList(object):
 
     def __init__(self, top=None, bottom=None, metals=None):
         # default top/bottom match the lossless TMET/BMET lines in met_p1.son
-        self.top = top if top is not None else Metal.superconductor(name="Lossless", ls=0, pattern=0)
-        self.bottom = bottom if bottom is not None else Metal.superconductor(name="Lossless", ls=0, pattern=0)
+        self.top = top if top is not None else Metal.superconductor(name="Lossless", ls=0, index=0)
+        self.bottom = bottom if bottom is not None else Metal.superconductor(name="Lossless", ls=0, index=0)
         # ordinary metals (MET lines); add to / remove from with the methods below
         self.metals = list(metals) if metals is not None else []
 
@@ -968,7 +988,79 @@ class Box(object):
         return "BOX {} {} {} {} {} {} {}".format(
             self.nlev, self.safe_x_size, self.safe_y_size, self.x_cells2, self.y_cells2, self.nsubs, self.eeff)
 
-ground_plane = GroundPlane(x_size=500.0, y_size=500.0,
+class Geometry(object):
+    """
+    Assembles the full Sonnet GEO block from its parts and renders it via
+    gen_sonnet_geometry():
+
+        GEO
+        <metals>          -- MetalList.gen_sonnet_metals()  (TMET, BMET, MET ...)
+        <box>             -- Box.gen_sonnet_box()           (BOX ...)
+        <dielectrics>     -- one Dielectric.gen_sonnet_dielectric() per layer
+        LORGN 0 <ysize> U -- local origin at (origin_x, ysize)
+        <ports>           -- Circuit ports
+        NUM <n>           -- polygon count
+        <polygons>        -- Circuit polygons
+        END GEO
+
+    The ports / NUM / polygons block comes straight from
+    Circuit.get_sonnet_string(), so this class only wraps the surrounding parts
+    around it. The circuit is (idempotently) generated before rendering.
+
+    ysize is the box height used for the local origin; it normally matches the
+    Box's / GroundPlane's y-size. Pass it as an int (e.g. 500) to match Sonnet's
+    "LORGN 0 500 U" formatting rather than "500.0".
+    """
+
+    def __init__(self, metal_list, box, dielectrics, circuit):
+        self.metal_list = metal_list
+        self.box = box
+        self.dielectrics = list(dielectrics)
+        self.circuit = circuit
+        # local origin: x defaults to 0, y is the box height (ysize)
+        self.origin_x = 0
+        self.origin_y = self.box.safe_y_size
+
+    # ------------------------------------------------------------------ #
+    # Section helpers
+    # ------------------------------------------------------------------ #
+    def gen_lorgn(self):
+        """Return the LORGN (local origin) line."""
+        return "LORGN {} {} U".format(self.origin_x, self.origin_y)
+
+    def gen_dielectrics(self):
+        """Return the dielectric layer lines, one per Dielectric, newline-joined."""
+        return "\n     ".join(dielectric.gen_sonnet_dielectric() for dielectric in self.dielectrics)
+
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
+    def gen_sonnet_geometry(self):
+        """Return the complete GEO ... END GEO block."""
+        # make sure the circuit's polygons and ports exist (idempotent)
+        self.circuit.generate()
+
+        text = "GEO"
+        text += "\n" + self.metal_list.gen_sonnet_metals()
+        text += "\n" + self.box.gen_sonnet_box()
+        text += "\n     " + self.gen_dielectrics()
+        text += "\n" + self.gen_lorgn()
+        # get_sonnet_string() already begins with a newline (its ports block),
+        # so concatenate it directly rather than adding another separator
+        text += self.circuit.get_sonnet_string()
+        text += "\nEND GEO"
+        return text
+
+metals = MetalList()
+metals.add_metal(Metal.superconductor())
+
+box = Box(x_size=500, y_size=500, x_scale=1.0, y_scale=1.0)
+
+top_layer = Dielectric(name="Unnamed", thickness=200.0, erel=1.0, mrel=1.0)
+substrate = Dielectric(name="Sapphire", thickness=450.0, erel=9.3, mrel=1.0, anisotropic=True, erel_2=11.5)
+dielectrics = [top_layer, substrate]
+
+ground_plane = GroundPlane(x_size=float(box.safe_x_size), y_size=float(box.safe_y_size),
                            top_b=500.0-348.0, res_yl=348-173,
                            side_b=12.0, near_b=12.0, feed_b=35.0, oppo_b=25.0,
                            feed_s=5.0, 
@@ -976,7 +1068,7 @@ ground_plane = GroundPlane(x_size=500.0, y_size=500.0,
 
 capacitor = Capacitor(finger_p=4.0, finger_b=2.0, finger_l=450.0, num_fingers=27, finger_lf=84.0,
                       side_b=7.0, top_b=10.0, transfer_b=5.0, transfer_0=250.0,
-                      ij_start=240.0, ij_end=243.0)
+                      ij_start=240.0)
 
 
 inductor = Inductor(turns=5,
@@ -988,8 +1080,12 @@ circuit = Circuit(ground_plane=ground_plane, capacitor=capacitor, inductor=induc
                   cap_dx=4.0, cap_dy=4.0)
 
 circuit.generate()
+
+geometry=Geometry(metal_list=metals, box=box, dielectrics=dielectrics, circuit=circuit)
+
 #polygons=inductor.get_polygons()
-print(circuit.get_sonnet_string())
+print(geometry.gen_sonnet_geometry())
+"""
 plt.figure()
 
 polygons=circuit.get_polygons()
@@ -1000,7 +1096,7 @@ for i in range(num):
     x,y = polygons[i].get_points()
     plt.fill(x,y,color=colors[i])
 
-"""
+
 polygons=capacitor.get_polygons()
 num = len(polygons)
 # creates a set of colours using the Blue colourmap
@@ -1017,7 +1113,7 @@ colors = plt.cm.Greens(np.linspace(0.2, 1, num))
 for i in range(num):
     x,y = polygons[i].get_points()
     plt.fill(x,y,color=colors[i])
-"""
+
 
 x,y = ground_plane.get_port_coords()
 plt.plot(x,y,'s',color="goldenrod")
@@ -1025,3 +1121,4 @@ plt.plot(x,y,'s',color="goldenrod")
 plt.show()
 
 plt.close()
+"""
