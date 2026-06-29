@@ -793,6 +793,51 @@ class Dielectric(object):
 
         return out_text
 
+class Metal(object):
+    """
+    Represents a Sonnet metal and renders it to a .son "MET" line:
+
+        MET "<name>" <pattern> <type> <param1> <param2> ...
+
+    The type code (e.g. SUP, NOR, RES, SEN, ...) and the number/meaning of the
+    parameters that follow it depend on the metal model. This class stores the
+    parameters generically so it can represent any metal type; supply the
+    values in the order Sonnet expects for that type.
+
+    The original code used the superconductor model:
+        MET "superconductor" 1 SUP 0 0 0 <Ls>
+    where only the final value -- the sheet kinetic inductance (args.ls) -- was
+    varied. Use the superconductor() helper for that case.
+    """
+
+    def __init__(self, name="", metal_type="", pattern=1, parameters=None):
+        self.name = name              # metal name, emitted in double quotes
+        self.metal_type = metal_type  # Sonnet type code, e.g. "SUP", "NOR", "RES"
+        self.pattern = pattern        # pattern/index field (the "1" in the example)
+        # type-specific values that follow the type code, in Sonnet's order
+        self.parameters = list(parameters) if parameters is not None else []
+
+    @classmethod
+    def superconductor(cls, name="superconductor", ls=0.0, rdc=0, rrf=0, xdc=0, pattern=1):
+        """
+        Build a superconductor (SUP) metal:
+
+            MET "<name>" <pattern> SUP <rdc> <rrf> <xdc> <ls>
+
+        ls is the sheet kinetic inductance (pH/sq) -- the value the original
+        gen_ls_line() set from args.ls. The other three are the superconductor
+        model's resistance/reactance terms and default to 0, as in the
+        original. (Confirm the exact term order against your Sonnet version if
+        you ever set them to non-zero values.)
+        """
+        return cls(name=name, metal_type="SUP", pattern=pattern,
+                   parameters=[rdc, rrf, xdc, ls])
+
+    def gen_sonnet_metal(self):
+        """Return the .son MET line for this metal."""
+        parts = ['MET "{}"'.format(self.name), str(self.pattern), self.metal_type]
+        parts.extend(str(value) for value in self.parameters)
+        return " ".join(parts)
 
 ground_plane = GroundPlane(x_size=500.0, y_size=500.0,
                            top_b=500.0-348.0, res_yl=348-173,
