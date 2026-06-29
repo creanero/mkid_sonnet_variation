@@ -5,7 +5,11 @@ This is a project to create automated variations of MKID designs using Python to
 *Schematic of an MKID resonator. Shown in green is the interdigitated capacitor and shown in red is the meandering inductor. The software presented here generates Sonnet geometries with specificied values or variations in the identified parameters.*
 
 ## How to use
-This tool generates MKID geometries based on command line inputs.  It is currently in active development. Due to this, the internal documentation is the best route to read how to use it. To access the internal help, enter
+The GUI can be used to create single MKID designs. A forthcoming version of the system will allow for variable designs.  Call the GUI using the following command
+`python3 mkid_gui.py`
+![Work In Progress GUI](gui.png)
+
+Another tool generates MKID geometries based on command line inputs.  It is currently in active development. Due to this, the internal documentation is the best route to read how to use it. To access the internal help, enter
 
 `python3 gen_mkids.py -h` or `python3 sonnet_csv_reader.py -h`
 

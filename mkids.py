@@ -1,0 +1,1518 @@
+from operator import ge
+
+from matplotlib import pyplot as plt
+import numpy as np
+import decimal
+from datetime import datetime
+
+import os
+
+
+class Header(object):
+    """
+    The top of a Sonnet .son file: the FTYP / VER lines and the HEADER block.
+        HEADER
+        LIC <lic>
+        DAT <dat>
+        BUILT_BY_CREATED <built_by_created>
+        BUILT_BY_SAVED <built_by_saved>
+        MDATE <mdate>
+        HDATE <hdate>
+        END HEADER
+    """
+
+    def __init__(self,
+                 lic="maynooth60.1.87150",
+                 dat=datetime.now().strftime("%m/%d/%Y %H:%M:%S"),
+                 built_by_created="xgeom 13.52 {}".format(datetime.now().strftime("%m/%d/%Y %H:%M:%S")),
+                 built_by_saved="Sonnet Variation",
+                 mdate=datetime.now().strftime("%m/%d/%Y %H:%M:%S"),
+                 hdate=datetime.now().strftime("%m/%d/%Y %H:%M:%S")):
+        self.lic = lic
+        self.dat = dat
+        self.built_by_created = built_by_created
+        self.built_by_saved = built_by_saved
+        self.mdate = mdate
+        self.hdate = hdate
+
+    def gen_sonnet_header(self):
+        """Return the FTYP / VER lines and the HEADER ... END HEADER block."""
+        lines = [
+            "HEADER",
+            "LIC {}".format(self.lic),
+            "DAT {}".format(self.dat),
+            "BUILT_BY_CREATED {}".format(self.built_by_created),
+            "BUILT_BY_SAVED {}".format(self.built_by_saved),
+            "MDATE {}".format(self.mdate),
+            "HDATE {}".format(self.hdate),
+            "END HEADER",
+        ]
+        return "\n".join(lines)
+
+
+class Units(object):
+    """
+    The DIM block, which sets the units for each physical quantity:
+
+        DIM
+        ANG <ang>     CAP <cap>     CON <con>     FREQ <freq>
+        IND <ind>     LNG <lng>     RES <res>
+        END DIM
+
+    Fields default to the template units (degrees, pF, /Ohm, GHz, nH, um, Ohm).
+    """
+
+    def __init__(self, ang="DEG", cap="PF", con="/OH", freq="GHZ", ind="NH", lng="UM", res="OH"):
+        self.ang = ang    # angle
+        self.cap = cap    # capacitance
+        self.con = con    # conductance
+        self.freq = freq  # frequency
+        self.ind = ind    # inductance
+        self.lng = lng    # length
+        self.res = res    # resistance
+
+    def gen_sonnet_units(self):
+        """Return the DIM ... END DIM block."""
+        lines = [
+            "DIM",
+            "ANG {}".format(self.ang),
+            "CAP {}".format(self.cap),
+            "CON {}".format(self.con),
+            "FREQ {}".format(self.freq),
+            "IND {}".format(self.ind),
+            "LNG {}".format(self.lng),
+            "RES {}".format(self.res),
+            "END DIM",
+        ]
+        return "\n".join(lines)
+
+
+class Control(object):
+    """
+    The CONTROL block, holding the analysis-control settings:
+
+        CONTROL
+        VARSWP            (emitted when varswp is True)
+        OPTIONS <options>
+        SPEED <speed>
+        CACHE_ABS <cache_abs>
+        Q_ACC <q_acc>
+        DET_ABS_RES <det_abs_res>
+        END CONTROL
+
+    VARSWP is a flag line (no value), modelled as the boolean varswp.
+    The remaining fields default to the template values.
+    """
+
+    def __init__(self, varswp=True, options="-dj", speed=2, cache_abs=1, q_acc="Y", det_abs_res="Y"):
+        self.varswp = varswp            # emit the VARSWP flag line
+        self.options = options
+        self.speed = speed
+        self.cache_abs = cache_abs
+        self.q_acc = q_acc
+        self.det_abs_res = det_abs_res
+
+    def gen_sonnet_control(self):
+        """Return the CONTROL ... END CONTROL block."""
+        lines = ["CONTROL"]
+        if self.varswp:
+            lines.append("VARSWP")
+            lines.append("OPTIONS {}".format(self.options))
+            lines.append("SPEED {}".format(self.speed))
+            lines.append("CACHE_ABS {}".format(self.cache_abs))
+            lines.append("Q_ACC {}".format(self.q_acc))
+            lines.append("DET_ABS_RES {}".format(self.det_abs_res))
+            lines.append("END CONTROL")
+        return "\n".join(lines)
+
+
+class Preamble(object):
+    """
+    Bundles the Header, Units, and Control blocks into the .son preamble,
+    replacing the old gen_preamble() that read head_dim_control.son from a
+    template. Each part defaults to its own template-matching values, so
+    Preamble().gen_sonnet_preamble() reproduces the original template; pass
+    custom Header / Units / Control objects to override any of them.
+
+        preamble = Preamble()
+        text = preamble.gen_sonnet_preamble()
+    """
+
+    def __init__(self,
+                 file_type="SONPROJ 18", file_comment="Sonnet Project File",
+                 version="18.58", 
+                 header=None, units=None, control=None):
+        
+        self.file_type = file_type
+        self.file_comment = file_comment
+        self.version = version
+        self.header = header if header is not None else Header()
+        self.units = units if units is not None else Units()
+        self.control = control if control is not None else Control()
+
+    def gen_sonnet_preamble(self):
+        """Return the full preamble: header, then units, then control."""
+        return "\n".join([
+            "FTYP {} ! {}".format(self.file_type, self.file_comment),
+            "VER {}".format(self.version),
+            self.header.gen_sonnet_header(),
+            self.units.gen_sonnet_units(),
+            self.control.gen_sonnet_control(),
+        ])
+
+class polygon(object):
+    def __init__(self, layer=0, metal=0, anisotropic=False, polygon_id=100, subsect_xmin=1, subsect_ymin=1, subsect_xmax=100, subsect_ymax=100, edge_mesh=True):
+        self.__x_coords = []
+        self.__y_coords = []
+        self.__layer = layer  # label in order of the layers
+        self.__metal = metal  # label of the "metal" used for the polygon
+        self.__polygon_id = polygon_id  # the "name" of this particular polygon
+        self.__anisotropic = anisotropic  # whether the metal is anisotropic or not
+
+        # Advanced Meshing Parameters
+        # Subsectioning limits
+        self.__subsect_xmin = subsect_xmin
+        self.__subsect_ymin = subsect_ymin
+        self.__subsect_xmax = subsect_xmax
+        self.__subsect_ymax = subsect_ymax
+        self.__edge_mesh = edge_mesh  # whether edge meshing is used or not
+    def add_point(self, x, y):
+        self.__x_coords.append(x)
+        self.__y_coords.append(y)
+    def clear_points(self):
+        self.__x_coords = []
+        self.__y_coords = []
+    def get_points(self):
+        return self.__x_coords, self.__y_coords
+    def get_num_points(self):
+        return len(self.__x_coords)
+    def _bool_to_YN(self, bool_arg):
+        if bool_arg:
+            return 'Y'
+        else:
+            return 'N'
+    def gen_sonnet_polygon(self):
+        # Generate the polygon in the Sonnet format
+        # TODO: figure out the last few parameters.
+        out_text = "{} {} {} {} {} {} {} {} {} 0 0 0 {}".format(self.__layer, self.get_num_points()+1, self.__metal, self._bool_to_YN(self.__anisotropic), self.__polygon_id, self.__subsect_xmin, self.__subsect_ymin, self.__subsect_xmax, self.__subsect_ymax, self._bool_to_YN(self.__edge_mesh))
+        # iterate through the points and add them to the output text
+        for x, y in zip(self.__x_coords, self.__y_coords):
+            # Add each point to the output text on a new line
+            out_text += "\n{} {}".format(x, y)
+        # Close the polygon by returning to the first point
+        out_text += "\n{} {}".format(self.__x_coords[0], self.__y_coords[0]) 
+        # finalise the polygon with the text "END"
+        out_text += "\nEND"
+        return out_text
+
+
+class Rectangle(polygon):
+    def __init__(self, x_0, y_0, dx, dy, polygon_id=100, metal=0):
+        super().__init__(polygon_id=polygon_id, metal=metal)
+        self.set_start_height_breadth(x_0, y_0, dx, dy)
+    def set_start_height_breadth(self, x_0, y_0, dx, dy):
+        if self.get_num_points() > 0:
+            raise ValueError("Rectangle points have already been set. Clear the points before setting new ones.")
+        else:
+            # Add the points to the polygon
+            self.add_point(x_0,         y_0)
+            self.add_point(x_0 + dx,    y_0)
+            self.add_point(x_0 + dx,    y_0 + dy)
+            self.add_point(x_0,         y_0 + dy)
+
+
+
+class Port(object):
+    """
+    A Sonnet port attached to one edge of a polygon. Replaces the gen_port()
+    function. The global ``polygon_name`` that gen_port read is now an explicit
+    ``polygon_id`` -- the id of the polygon the port sits on -- passed in at
+    construction. Call ``gen_sonnet_port()`` to render the .son definition.
+    """
+
+    def __init__(self, x, y, port_num, reference_plane, polygon_id,
+                 port_type="BOX", resistance=50, reactance=0, inductance=0, capacitance=0):
+        self.x = x                          # port x-coordinate (micrometres)
+        self.y = y                          # port y-coordinate (micrometres)
+        self.port_num = port_num            # Sonnet port number
+        self.reference_plane = reference_plane
+        self.polygon_id = polygon_id        # id of the polygon this port attaches to
+        self.port_type = port_type
+        self.resistance = resistance
+        self.reactance = reactance
+        self.inductance = inductance
+        self.capacitance = capacitance
+
+    def gen_sonnet_port(self):
+        """Return the .son port-definition string."""
+        return ("POR1 {}\n".format(self.port_type) +
+                "POLY {} 1\n".format(self.polygon_id) +
+                "{}\n".format(self.reference_plane) +
+                "{} {} {} {} {} {} {}".format(self.port_num, self.resistance, self.reactance,
+                                              self.inductance, self.capacitance, self.x, self.y))
+
+
+class Component(object):
+    def __init__(self, start_polygon_id=100, metal=0):
+        self.__polygons = []
+        self.__current_polygon_id = start_polygon_id
+        self.__metal = metal
+    
+    def get_polygons(self):
+        return self.__polygons
+    def get_num_polygons(self):
+        return len(self.__polygons)
+    def get_current_polygon(self):
+        return self.__current_polygon_id
+    def set_current_polygon(self, polygon_id):
+        self.__current_polygon_id = polygon_id
+    def get_polygons_string(self):
+        out_string = ""
+        for polygon in self.get_polygons():
+            out_string += "\n{}".format(polygon.gen_sonnet_polygon())
+        return out_string
+    def add_polygon(self, polygon):
+        self.__polygons.append(polygon)
+    def _rect(self, origin_x, origin_y, direction, dx, dy, width, length):
+        """
+        Generate a single inductor rectangle, offset from (origin_x, origin_y).
+        :param dx, dy: offset of the rectangle's origin from the passed origin
+        :param width: x-extent (applied in the current direction)
+        :param length: y-extent (drawn downward)
+        :return: string containing the .son code for the rectangle
+        """
+        x0 = origin_x + (direction * dx)
+        y0 = origin_y + dy
+        
+        self.add_polygon(Rectangle(x0, y0, (direction * width), length, polygon_id=self.__current_polygon_id, metal=self.__metal))
+        self.__current_polygon_id = self.__current_polygon_id + 1
+
+class Capacitor(Component):
+    """
+    Generates Sonnet (.son) polygon code for an interdigitated capacitor:
+    the rectangular frame plus alternating fingers and a final partial finger.
+
+    Like Inductor, this subclasses Geometry and builds its shapes by appending
+    ``rectangle`` objects to the inherited polygon list (via ``add_polygon``);
+    call ``get_polygons_string()`` to render them. The standalone
+    ``gen_sonnet_rectangle`` helper and its global ``polygon_name`` counter are
+    no longer needed -- polygon ids are handled by the polygon/rectangle classes.
+
+        cap = Capacitor(pitch=2.0, thick=1.0, length=10.0, num_fingers=4, ...)
+        cap.generate()
+        son_code = cap.get_polygons_string()
+
+    Former globals map to attributes as follows:
+        args.pitch       -> self.pitch
+        args.thick       -> self.thick
+        args.length      -> self.length
+        args.num_fingers -> self.num_fingers
+        args.final       -> self.final
+        cap_left_out     -> self.cap_left_out
+        cap_left_in      -> self.cap_left_in
+        cap_right_in     -> self.cap_right_in
+        cap_right_out    -> self.cap_right_out
+        cap_top_out      -> self.cap_top_out
+        cap_top_in       -> self.cap_top_in
+        transfer_bar_in  -> self.transfer_bar_in
+        transfer_bar_out -> self.transfer_bar_out
+        transfer_bar_end -> self.transfer_bar_end
+        ij_start         -> self.ij_start
+        ij_end           -> self.ij_end
+
+    Requires numpy (imported at module level as np), as in the original code.
+    """
+
+    def __init__(self,
+                 finger_p=0.0, finger_b=0.0, finger_l=0.0, num_fingers=0, finger_lf=0.0,
+                 x0=0.0, y0=0.0, xf=0.0, yf=0.0,
+                 side_b=0.0, top_b=0.0, transfer_b=0, transfer_0=0.0,
+                 ij_start=0.0, ij_end=0.0, start_polygon_id=100):
+        super().__init__(start_polygon_id)
+        # finger properties (formerly read from args)
+        self.finger_p = finger_p              # centre-to-centre finger spacing
+        self.finger_b = finger_b          # finger thickness
+        self.finger_l = finger_l            # full finger length
+        self.num_fingers = num_fingers  # number of full fingers
+        self.finger_lf = finger_lf              # length of the trailing partial finger
+        # capacitor frame boundaries
+        self.x0 = x0
+        self.y0 = y0
+        self.xf = xf
+        self.yf = yf
+        # sidebar, top bar and transfer bar breadths
+        self.side_b = side_b
+        self.top_b = top_b
+        self.transfer_b = transfer_b
+        self.transfer_x0 = transfer_0
+        # inductor-junction x extents (shared boundary with the inductor)
+        self.ij_start = ij_start
+        self.ij_end = ij_end
+
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
+    def generate(self):
+        """Build all capacitor polygons (frame + fingers) into the polygon list."""
+        self._frame()
+        self._fingers()
+
+    def gen_ij_origin(self):
+        origin_x = self.ij_start
+        origin_y = self._y0_in()
+        return origin_x, origin_y
+
+        
+
+    # ------------------------------------------------------------------ #
+    # Internal calculated properties
+    # ------------------------------------------------------------------ #
+    def _x0_in(self):
+        return self.x0 + self.side_b
+    def _xf_in(self):
+        return self.xf - self.side_b
+    def _y0_in(self):
+        return self.y0 + self.top_b
+    def _yf_in(self):
+        return self.yf - self.transfer_b
+    def _finger_s(self):
+        return self.finger_p - self.finger_b
+    def _right_side_bar_l(self):
+        return self.yf - self.y0
+    def _left_side_bar_l(self):
+        return self._right_side_bar_l() - (self._finger_s() + self.transfer_b)
+    def _top_left_w(self):
+        return self.ij_start - self._x0_in()
+    def _top_right_w(self):
+        return self._xf_in() - self.ij_end 
+    def _transfer_w(self):
+        return self._xf_in() - self.transfer_x0
+    def _transfer_y0(self):
+        return self.y0 + self._right_side_bar_l() - self.transfer_b
+    def _in_w(self):
+        return self._xf_in() - self._x0_in()
+
+
+    # ------------------------------------------------------------------ #
+    # Internal geometry helpers
+    # ------------------------------------------------------------------ #
+    def _frame(self):
+        """Generate the five rectangles forming the capacitor outline and transfer bar."""
+        origin_x, origin_y = 0, 0 #self.x0, self.y0
+        direction = 1
+
+        rects = [
+            # dx,               dy,                    width,                  length
+            (self.x0,           self.y0,               self.side_b,            self._left_side_bar_l() ),  # left side bar
+            (self._x0_in(),     self.y0,               self._top_left_w(),     self.top_b              ),  # left top bar
+            (self.ij_end,       self.y0,               self._top_right_w(),    self.top_b              ),  # right top bar
+            (self._xf_in(),     self.y0,               self.side_b,            self._right_side_bar_l()),  # right side bar
+            (self.transfer_x0,  self._transfer_y0(),   self._transfer_w(),     self.transfer_b         ),  # transfer bar
+        ]
+
+        for r in rects:
+            self._rect(origin_x, origin_y, direction, *r) 
+      
+    def _fingers(self):
+        """Generate the alternating full fingers plus the trailing partial finger."""
+        origin_x = self._x0_in()
+        origin_y = self.y0 + self._left_side_bar_l()
+
+        direction = 1
+
+        # need to leave room for the final (partial) finger
+        #if (end_fingers - self.finger_p) < self._y0_in():
+         #   raise OverflowError("Not enough room for the requested number of fingers.")
+
+        rects = []
+
+        # even index -> left side, odd index -> right side
+        for i in range(self.num_fingers):
+            rects.append(self._finger(i, self.finger_l))
+
+        rects.append(self._finger(self.num_fingers, self.finger_lf))
+
+        for r in rects:
+            self._rect(origin_x, origin_y, direction, *r) 
+
+    def _finger(self, number, length):
+        dy = -(number * self.finger_p)
+        right = bool(number % 2)
+        if right:
+            dx = self._in_w() - length
+        else:
+            dx = 0
+        return (dx, dy, length, -self.finger_b)
+
+
+
+
+class Inductor(Component):
+    """
+    Generates Sonnet (.son) polygon code for a spiral inductor with a junction.
+
+    All geometry parameters are member variables and can be set from the
+    outside: either pass them to the constructor, or assign the attributes
+    after instantiation, e.g.
+
+        ind = Inductor(turns=4, breadth=2.0, space=2.0, length=40.0, pitch=4.0)
+        ind.ij_start = 0.0
+        son_code = ind.generate()
+    """
+
+    def __init__(self,
+                 turns=0,
+                 breadth=0.0,
+                 space=0.0,
+                 length=0.0,
+                 x0=0.0,
+                 y0=0.0,
+                 ij_b=0.0, 
+                 start_polygon_id=100):
+        super().__init__(start_polygon_id)
+        # number of turns in the spiral
+        self.turns = turns
+        # conductor line breadth (thickness of each rectangle)
+        self.breadth = breadth
+        # spacing between adjacent conductor lines
+        self.space = space
+        # horizontal extent of a turn
+        self.length = length
+        # inductor-capacitor junction x/y origins
+        self.x0 = x0
+        self.y0 = y0
+        # inductor-capacitor junction breadth
+        self.ij_b = ij_b
+
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
+    def generate(self):
+        """
+        Generate the polygons for the inductor.
+        :return: string containing the .son code for the inductor
+        """
+        direction = 1
+        origin_x, origin_y = self.x0, self.y0
+        origin_x, origin_y = self._junction(origin_x, origin_y, direction)
+
+        for i in range(self.turns):
+            direction = (-1) ** i
+            origin_x, origin_y = self._turn(origin_x, origin_y, direction)
+
+        direction = (-1) ** self.turns
+        self._end(origin_x, origin_y, direction)
+
+        
+
+    # ------------------------------------------------------------------ #
+    # Internal calculated properties
+    # ------------------------------------------------------------------ #
+    def _out_l(self):
+        # length of the outer endcap of a turn
+        return (3 * self.space) + (4 * self.breadth)
+    def _mid_l(self):
+        # length of the inner endcap of a turn
+        return (1 * self.space) + (2 * self.breadth)
+    def _pitch(self):
+        # vertical pitch between segments within a turn
+        return self.breadth + self.space
+    def _bar_l(self):
+        # length of the bars of a turn
+        return self.length - (2 * self._pitch())
+    def _bar1_x0(self):
+        return (2 * self.breadth) + self.space
+    def _bar1_y0(self):
+        return -(2 * self._pitch())
+    def _bar2_x0(self):
+        return self.breadth
+    def _bar2_y0(self):
+        return -(3 * self._pitch())
+    def _ij_l1(self):
+        return self.ij_b -  ((self.breadth * 2) + self.space)
+    def _ij_l2(self):
+        return self.ij_b -  self.breadth
+    def inductor_height(self):
+        return self.turns * self._pitch() * 2
+
+    # ------------------------------------------------------------------ #
+    # Internal geometry helpers
+    # ------------------------------------------------------------------ #
+    def _junction(self, origin_x, origin_y, direction):
+        """
+        Generate the polygons for the inductor junction.
+        :return: (ij_string, origin_x, origin_y) for the first turn
+        """
+
+
+        rects = [
+            # dx,              dy, width,         length
+            (0,                0,  self.breadth,  -self._ij_l1()),
+            (self._pitch(),    0,  self.breadth,  -self._ij_l2()),
+        ]
+        for r in rects:
+            self._rect(origin_x, origin_y, direction, *r) 
+
+        return origin_x, origin_y-self._ij_l1()
+
+    def _turn(self, origin_x, origin_y, direction):
+        """
+        Generate one full turn (four rectangles) and the next origin.
+        :return: (turn_string, final_x, final_y)
+        """
+        rects = [
+            # dx,               dy,               width,          length
+            (0,                 0,                self.breadth,   -self._out_l()   ),
+            (self._pitch(),     -self._pitch(),   self.breadth,   -self._mid_l()   ),
+            (self._bar1_x0(),   self._bar1_y0(),  self._bar_l(),  -self.breadth    ),
+            (self._bar2_x0(),   self._bar2_y0(),  self._bar_l(),  -self.breadth    ),
+        ]
+
+        for r in rects:
+            self._rect(origin_x, origin_y, direction, *r) 
+        
+
+        final_x = origin_x + (direction * self.length)
+        final_y = origin_y - (2 * self._pitch())
+        return final_x, final_y
+
+    def _end(self, origin_x, origin_y, direction):
+        """
+        Generate the closing end segment (two rectangles).
+        """
+        rects = [
+            # dx,            dy,           width,         length
+            (0,              0,            self.breadth,  -self._mid_l()),
+            (self.breadth,   -self._pitch(),   self._pitch(),    -self.breadth),
+        ]
+        for r in rects:
+            self._rect(origin_x, origin_y, direction, *r) 
+
+
+class GroundPlane(Component):
+    """
+    Generates Sonnet (.son) polygon code for the ground plane: a top bar, two
+    resonator sidebars, three full-width horizontal bars carrying edge ports
+    (the near bar, the feed line, and the opposite bar), and a final bar.
+
+    Like the other Geometry subclasses, shapes are built by calling the
+    inherited ``_rect`` primitive; rendered via ``get_polygons_string()``.
+    Ports are a ground-plane-specific concept, so they are kept in a local list
+    and rendered via ``get_ports_string()`` -- mirroring the two strings the
+    original gen_ground_plane() returned (ports, polygons).
+
+        gp = GroundPlane(x_size=..., y_size=..., resonator_top=..., ...)
+        gp.generate()
+        polygons = gp.get_polygons_string()
+        ports = gp.get_ports_string()
+
+    Former globals map to attributes as follows:
+        args.x_size        -> self.x_size
+        args.y_size        -> self.y_size
+        resonator_top      -> self.resonator_top
+        resonator_bottom   -> self.resonator_bottom
+        gp_sidebar_breadth -> self.sidebar_b
+        feed_line_breadth  -> self.feed_line_b
+        gp_opp_breadth     -> self.opp_b
+        feed_line_space    -> self.feed_line_space
+        gp_split           -> self.gp_split
+    """
+
+    def __init__(self,
+                 x0=0.0, y0=0.0,
+                 x_size=0.0, y_size=0.0,
+                 top_b=0.0, side_b=0.0, near_b=0.0, feed_b=0.0, oppo_b=0.0,
+                 res_yl=0.0,          
+                 feed_s=0.0, 
+                 start_polygon_id=100):
+        super().__init__(start_polygon_id)
+        self.__ports = []
+        self.x0 = x0
+        self.y0 = y0
+        # overall circuit size
+        self.x_size = x_size
+        self.y_size = y_size
+        # resonator extents (shared boundary with the resonator)
+        self.res_yl = res_yl
+        # bar breadths
+        self.top_b = top_b    # top bar before the resonator
+        self.side_b = side_b  # resonator sidebars
+        self.near_b = near_b  # near bar between resonator and feed line
+        self.feed_b = feed_b  # feed line
+        self.oppo_b = oppo_b  # bar opposite the feed line
+        # vertical gap around the feed line
+        self.feed_s = feed_s
+
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
+    def generate(self):
+        """Build all ground-plane polygons and ports."""
+        origin_x, origin_y, direction = self.x0, self.y0, 1
+        # top bar: full width, from the top of the circuit down to the resonator
+        # left and right sidebars, running down either side of the resonator
+        # final bar: full width, from the split line to the bottom of the circuit
+        rects = [
+            # dx,               dy,                 width,            length
+            (0,                 0,                  self.x_size,        self.top_b),       # top bar
+            (0,                 self.top_b,         self.side_b,     self.res_yl),      # left side bar
+            (self._res_xf(),    self.top_b,         self.side_b,     self.res_yl),      # right side bar
+            (0,                 self._final_y0(),   self.x_size,        self._final_b()),  # final bar
+        ]
+
+        for r in rects:
+            self._rect(origin_x, origin_y, direction, *r) 
+        """
+        # top bar: full width, from the top of the circuit down to the resonator
+        self._rect(origin_x, origin_y, direction, 0, 0, self.x_size, self.top_b)
+        # left and right sidebars, running down either side of the resonator
+        self._rect(origin_x, origin_y, direction,
+                   0, self.top_b, self.resonator_left, self._sidebar_length())
+        self._rect(origin_x, origin_y, direction,
+                   self.x_size - self.sidebar_b, self.top_b, self.sidebar_b, self._sidebar_length())
+        """
+        port_num_ground = -1
+        port_num_feed_l = 2
+        port_num_feed_r = 1
+        # near bar with ports, just below the resonator
+        self._port_bar(self._near_y0(), self.near_b, port_num_ground, port_num_ground)
+        # feed line with ports
+        self._port_bar(self._feed_y0(), self.feed_b, port_num_feed_l, port_num_feed_r)
+        # opposite ground-plane bar with ports
+        self._port_bar(self._oppo_y0(), self.oppo_b, port_num_ground, port_num_ground)
+
+        # final bar: full width, from the split line to the bottom of the circuit
+        #self._rect(origin_x, origin_y, direction, 0, self.gp_split, self.x_size, self.y_size - self.gp_split)
+
+    def add_port(self, port):
+        self.__ports.append(port)
+
+    def get_ports(self):
+        return self.__ports
+
+    def get_port_coords(self):
+        """
+        Extract the coordinates of every port on the ground plane.
+        :return: (x_coords, y_coords) -- two parallel lists, matching the
+                 convention of polygon.get_points() and ready to pass to
+                 plt.scatter for plotting.
+        """
+        x_coords = [port.x for port in self.__ports]
+        y_coords = [port.y for port in self.__ports]
+        return x_coords, y_coords
+
+    def get_ports_string(self):
+        out_string = ""
+        for port in self.__ports:
+            out_string += "\n{}".format(port.gen_sonnet_port())
+        return out_string
+
+    def get_res_origin(self):
+        return self._res_x0(), self._res_y0()
+    def get_res_ending(self):
+        return self._res_xf(), self._res_yf()
+
+    # ------------------------------------------------------------------ #
+    # Internal calculated properties
+    # ------------------------------------------------------------------ #
+    def _xf(self):
+        return self.x0 + self.x_size
+    def _yf(self):
+        return self.y0 + self.y_size
+    def _res_x0(self):
+        return self.x0 + self.side_b
+    def _res_xf(self):
+        return self._xf() - self.side_b
+    def _res_y0(self):
+        return self.y0 + self.top_b
+    def _res_yf(self):
+        return self._res_y0() + self.res_yl
+    def _near_y0(self):
+        return self._res_yf()
+    def _near_yf(self):
+        return self._near_y0() + self.near_b
+    def _feed_y0(self):
+        return self._near_yf() + self.feed_s
+    def _feed_yf(self):
+        return self._feed_y0() + self.feed_b
+    def _oppo_y0(self):
+        return self._feed_yf() + self.feed_s
+    def _opp_yf(self):
+        return self._oppo_y0() + self.oppo_b
+    def _final_y0(self):
+        return self._opp_yf()
+    def _final_b(self):
+        return self._yf() - self._opp_yf()
+
+
+    # ------------------------------------------------------------------ #
+    # Internal geometry helpers
+    # ------------------------------------------------------------------ #
+    def _port_bar(self, top, breadth, port_num_l, port_num_r, reference_plane_l=1, reference_plane_r=3):
+        """
+        Draw a full-width horizontal bar and attach a port to each end.
+        :param top: y-coordinate of the bar's top edge
+        :param breadth: vertical thickness of the bar
+        :param port_num_l / port_num_r: port numbers for the left/right edges
+        :return: y-coordinate of the bar's bottom edge
+        """
+        origin_x, origin_y, direction = self.x0, self.y0, 1
+        dx = 0
+
+        # the bar takes the next polygon id; capture it so the ports can reference it
+        bar_id = self.get_current_polygon()
+        self._rect(origin_x, origin_y, direction, dx, top, self.x_size, breadth)
+
+        # NOTE: kept from the original, but this puts the ports at top + 1.5*breadth
+        # (below the bar), not the bar's vertical midpoint. If the midpoint was
+        # intended, this should be top + (breadth / 2).
+        midpoint = top + (breadth / 2)
+        left = origin_x
+        right = self._xf()
+        # the original emits the right port before the left port
+        self.add_port(Port(left,  midpoint, port_num_l, reference_plane_l, bar_id))
+        self.add_port(Port(right, midpoint, port_num_r, reference_plane_r, bar_id))  
+        
+
+class Circuit(object):
+    """
+    Composes a GroundPlane, an Inductor, and a Capacitor into a single MKID
+    circuit, resolving the handful of coordinates that are shared between them
+    while leaving every other parameter independent (set by the caller when
+    each geometry is constructed).
+
+    Coupling handled here:
+      * inductor_height = inductor.inductor_height() (turns x 2 x pitch).
+      * The capacitor is placed inside the ground plane's resonator region:
+            x0 = get_res_origin().x + cap_dx
+            y0 = get_res_origin().y + (cap_dy + inductor_height)
+            xf = get_res_ending().x - cap_dx
+            yf = get_res_ending().y - cap_dy
+        i.e. offset inward by cap_dx / cap_dy, leaving room above for the inductor.
+      * The inductor is placed at the capacitor's junction origin,
+        capacitor.gen_ij_origin().
+      * Polygon ids run sequentially across all three geometries.
+
+    Usage:
+        gp  = GroundPlane(...)
+        cap = Capacitor(...)   # its x0/y0/xf/yf are overwritten by the Circuit
+        ind = Inductor(...)    # its x0/y0 are overwritten by the Circuit
+        circuit = Circuit(gp, cap, ind, cap_dx=5.0, cap_dy=4.0, start_polygon_id=100)
+        circuit.generate()
+        son_code = circuit.get_sonnet_string()
+
+    Requires these small additions to the existing classes:
+        Geometry.set_current_polygon(self, polygon_id)
+        GroundPlane.get_res_origin(self)   -> (resonator_left, resonator_top)
+        GroundPlane.get_res_ending(self)   -> (x_size - sidebar_b, resonator_bottom)
+        Inductor.inductor_height(self)     -> turns * pitch
+    """
+
+    def __init__(self, ground_plane, capacitor, inductor,
+                 cap_dx=0.0, cap_dy=0.0, start_polygon_id=100):
+        self.__ground_plane = ground_plane
+        self.__capacitor = capacitor
+        self.__inductor = inductor
+        # inward offsets of the capacitor frame from the resonator region
+        self.cap_dx = cap_dx
+        self.cap_dy = cap_dy
+        # polygon id the first polygon of the whole circuit will take
+        self.start_polygon_id = start_polygon_id
+        self.__generated = False
+        # resolve the shared coordinates up front so the sub-geometries are
+        # fully positioned before anything is generated
+        self.__place()
+
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
+    def generate(self):
+        """
+        Generate every polygon and port. Geometries are generated in order and
+        their polygon-id counters chained, so ids are unique and sequential
+        across the ground plane, inductor, and capacitor. Idempotent.
+        """
+        if self.__generated:
+            return
+
+        self.__ground_plane.set_current_polygon(self.start_polygon_id)
+        self.__ground_plane.generate()
+
+        self.__inductor.set_current_polygon(self.__ground_plane.get_current_polygon())
+        self.__inductor.generate()
+
+        self.__capacitor.set_current_polygon(self.__inductor.get_current_polygon())
+        self.__capacitor.generate()
+
+        self.__generated = True
+
+    def get_sonnet_string(self):
+        """
+        Return the combined Sonnet code: all ports, then the polygon count,
+        then all polygons -- across the three geometries, in id order.
+        """
+        ports_string = self.__ground_plane.get_ports_string()
+        polygons_string = (self.__ground_plane.get_polygons_string() +
+                           self.__inductor.get_polygons_string() +
+                           self.__capacitor.get_polygons_string())
+        num_polygons = (self.__ground_plane.get_num_polygons() +
+                        self.__inductor.get_num_polygons() +
+                        self.__capacitor.get_num_polygons())
+        return ports_string + "\nNUM " + str(num_polygons) + polygons_string
+
+    def get_polygons(self):
+        polygons = []
+        polygons.extend(self.__ground_plane.get_polygons())
+        polygons.extend(self.__capacitor.get_polygons())
+        polygons.extend(self.__inductor.get_polygons())
+        return polygons
+
+    def get_ground_plane(self):
+        return self.__ground_plane
+
+    def get_capacitor(self):
+        return self.__capacitor
+
+    def get_inductor(self):
+        return self.__inductor
+
+    # ------------------------------------------------------------------ #
+    # Internal wiring
+    # ------------------------------------------------------------------ #
+    def __place(self):
+        """Resolve the coordinates shared between the three geometries."""
+        inductor_height = self.__inductor.inductor_height()
+
+        res_origin_x, res_origin_y = self.__ground_plane.get_res_origin()
+        res_end_x, res_end_y = self.__ground_plane.get_res_ending()
+
+        # capacitor sits inside the resonator region, leaving room for the
+        # inductor above it
+        self.__capacitor.x0 = res_origin_x + self.cap_dx
+        self.__capacitor.y0 = res_origin_y + (self.cap_dy + inductor_height)
+        self.__capacitor.xf = res_end_x - self.cap_dx
+        self.__capacitor.yf = res_end_y - self.cap_dy
+        self.__capacitor.ij_end = self.__capacitor.ij_start + self.__inductor._mid_l()
+
+        # inductor sits at the capacitor's inductor-junction origin (depends on
+        # the capacitor's y0, which was just set)
+        self.__inductor.x0, self.__inductor.y0 = self.__capacitor.gen_ij_origin()
+        self.__inductor.ij_b = self.__capacitor.top_b
+
+
+
+class Dielectric(object):
+    """
+    Represents a Sonnet dielectric layer and renders it to .son format.
+
+    Properties:
+        name                  -- layer name (string), emitted in double quotes
+        thickness             -- layer thickness (float)
+        erel                  -- relative permittivity (float)
+        mrel                  -- relative permeability (float)
+        dielectric_loss_tan   -- dielectric loss tangent (float)
+        conductivity          -- dielectric conductivity (float)
+        mag_loss_tan          -- magnetic loss tangent (float)
+        anisotropic           -- bool. When True, a second set of every float
+                                 property except thickness is required (the
+                                 *_2 attributes), describing the second
+                                 (normal) direction.
+
+    All parameters can be set via the constructor or by assignment afterwards.
+    The *_2 attributes default to None; they only need values when anisotropic
+    is True, at which point gen_sonnet_dielectric() enforces that they are set.
+    """
+
+    def __init__(self, name="", thickness=0.0,
+                 erel=0.0, mrel=0.0, dielectric_loss_tan=0.0,
+                 conductivity=0.0, mag_loss_tan=0.0, brick_z_partitions=0,
+                 anisotropic=False,
+                 erel_2=None, mrel_2=None, dielectric_loss_tan_2=None,
+                 conductivity_2=None, mag_loss_tan_2=None):
+        self.name = name
+        self.thickness = thickness
+        # first set of properties
+        self.erel = erel
+        self.mrel = mrel
+        self.dielectric_loss_tan = dielectric_loss_tan
+        self.conductivity = conductivity
+        self.mag_loss_tan = mag_loss_tan
+        self.anisotropic = anisotropic
+        self.brick_z_partitions = brick_z_partitions
+        # second set, required only when anisotropic is True
+        self.erel_2 = erel_2
+        self.mrel_2 = mrel_2
+        self.dielectric_loss_tan_2 = dielectric_loss_tan_2
+        self.conductivity_2 = conductivity_2
+        self.mag_loss_tan_2 = mag_loss_tan_2
+        self.fix_none()
+
+    def fix_none(self):
+        """
+        Allows the *_2 parameters to default to the same as their base parameters
+        if they were not set by the user and anisotropic is true
+        """
+        if self.anisotropic:
+            if self.erel_2 is None:
+                self.rel_2 = self.erel
+            if self.mrel_2 is None:
+                self.mrel_2 = self.mrel
+            if self.dielectric_loss_tan_2 is None:
+                self.dielectric_loss_tan_2 = self.dielectric_loss_tan
+            if self.conductivity_2 is None:
+                self.conductivity_2 = self.conductivity
+            if self.mag_loss_tan_2 is None:
+                self.mag_loss_tan_2 = self.mag_loss_tan
+
+    def gen_sonnet_dielectric(self):
+        """
+        Return the space-separated .son representation of the layer:
+
+            thickness erel mrel dielectric_loss_tan conductivity mag_loss_tan "name"
+
+        and, when anisotropic, an 'A' flag followed by the second set:
+
+            ... "name" A erel_2 mrel_2 dielectric_loss_tan_2 conductivity_2 mag_loss_tan_2
+        """
+        first_set = [self.thickness, self.erel, self.mrel,
+                     self.dielectric_loss_tan, self.conductivity, self.mag_loss_tan, self.brick_z_partitions]
+        out_text = " ".join(str(value) for value in first_set) + ' "{}"'.format(self.name)
+
+        if self.anisotropic:
+            second_set = [self.erel_2, self.mrel_2, self.dielectric_loss_tan_2,
+                          self.conductivity_2, self.mag_loss_tan_2]
+            if any(value is None for value in second_set):
+                raise ValueError("Anisotropic dielectric requires the second set "
+                                 "of properties (the *_2 attributes) to be set.")
+            out_text += " A " + " ".join(str(value) for value in second_set)
+
+        return out_text
+
+class Metal(object):
+    """
+    Represents a Sonnet metal and renders it to a .son "MET" line:
+
+        MET "<name>" <pattern> <type> <param1> <param2> ...
+
+    The type code (e.g. SUP, NOR, RES, SEN, ...) and the number/meaning of the
+    parameters that follow it depend on the metal model. This class stores the
+    parameters generically so it can represent any metal type; supply the
+    values in the order Sonnet expects for that type.
+
+    The original code used the superconductor model:
+        MET "superconductor" 1 SUP 0 0 0 <Ls>
+    where only the final value -- the sheet kinetic inductance (args.ls) -- was
+    varied. Use the superconductor() helper for that case.
+    """
+
+    def __init__(self, name="", metal_type="", index=1, parameters=None):
+        self.name = name              # metal name, emitted in double quotes
+        self.metal_type = metal_type  # Sonnet type code, e.g. "SUP", "NOR", "RES"
+        self.index = index        # pattern/index field (the "1" in the example)
+        # type-specific values that follow the type code, in Sonnet's order
+        self.parameters = list(parameters) if parameters is not None else []
+
+    @classmethod
+    def superconductor(cls, name="superconductor", ls=0.0, rdc=0, rrf=0, xdc=0, index=1):
+        """
+        Build a superconductor (SUP) metal:
+
+            MET "<name>" <pattern> SUP <rdc> <rrf> <xdc> <ls>
+
+        ls is the sheet kinetic inductance (pH/sq) -- the value the original
+        gen_ls_line() set from args.ls. The other three are the superconductor
+        model's resistance/reactance terms and default to 0, as in the
+        original. (Confirm the exact term order against your Sonnet version if
+        you ever set them to non-zero values.)
+        """
+        return cls(name=name, metal_type="SUP", index=index,
+                   parameters=[rdc, rrf, xdc, ls])
+
+    def gen_sonnet_metal(self, keyword="MET"):
+        """Return the .son metal line. keyword is the record type: MET, TMET, or BMET."""
+        parts = ['{} "{}"'.format(keyword, self.name), str(self.index), self.metal_type]
+        parts.extend(str(value) for value in self.parameters)
+        return " ".join(parts)
+
+class MetalList(object):
+    """
+    Holds the metals for a Sonnet circuit and renders them as .son lines.
+
+    Always has:
+      * top    -- rendered as a TMET line (the top of the box)
+      * bottom -- rendered as a BMET line (the bottom of the box)
+    and any number of ordinary metals, each rendered as a MET line, which can
+    be added and removed.
+
+    The top and bottom default to the lossless metal from met_p1.son
+    (TMET/BMET "Lossless" 0 SUP 0 0 0 0); pass your own Metal objects to
+    override them. gen_sonnet_metals() emits top, then bottom, then the
+    ordinary metals in order -- matching how the original gen_met() assembled
+    met_p1.son followed by the MET lines.
+
+        metals = MetalList()
+        metals.add_metal(Metal.superconductor(name="TiN multi", ls=5, pattern=2))
+        metals.add_metal(Metal.superconductor(name="thick Ta", ls=0.001, pattern=3))
+        text = metals.gen_sonnet_metals()
+
+    Requires Metal.gen_sonnet_metal() to accept a keyword argument (default
+    "MET") so the same Metal can be emitted as a MET, TMET, or BMET line.
+    """
+
+    def __init__(self, top=None, bottom=None, metals=None):
+        # default top/bottom match the lossless TMET/BMET lines in met_p1.son
+        self.top = top if top is not None else Metal.superconductor(name="Lossless", ls=0, index=0)
+        self.bottom = bottom if bottom is not None else Metal.superconductor(name="Lossless", ls=0, index=0)
+        # ordinary metals (MET lines); add to / remove from with the methods below
+        self.metals = list(metals) if metals is not None else []
+
+    def add_metal(self, metal):
+        """Append an ordinary metal (rendered as a MET line)."""
+        self.metals.append(metal)
+
+    def remove_metal(self, metal):
+        """Remove a previously added metal by reference (raises ValueError if absent)."""
+        self.metals.remove(metal)
+
+    def get_metals(self):
+        return self.metals
+
+    def gen_sonnet_metals(self):
+        """
+        Return the .son representation of every metal: the TMET line, the BMET
+        line, then one MET line per ordinary metal, newline-separated.
+        """
+        lines = [self.top.gen_sonnet_metal(keyword="TMET"),
+                 self.bottom.gen_sonnet_metal(keyword="BMET")]
+        lines.extend(metal.gen_sonnet_metal() for metal in self.metals)
+        return "\n".join(lines)
+
+
+
+
+
+
+class Box(object):
+    """
+    Generates the Sonnet "BOX" line, which sets the substrate size and the
+    meshing grid:
+
+        BOX <nlev> <x_size> <y_size> <x_cells2> <y_cells2> <nsubs> <eeff>
+
+    x_cells2 / y_cells2 are *twice* the number of cells along each axis (a
+    Sonnet convention), derived from the box size and the desired per-axis
+    cell size (x_scale / y_scale). Decimal arithmetic is used throughout so
+    that sizes such as 0.3 / 0.1 don't pick up floating-point error (which
+    would otherwise floor 5.999... to 5 cells instead of 6).
+
+    nlev defaults to 1 (number of dielectric levels). nsubs and eeff default
+    to the trailing values the original code emitted (20 and 0); confirm their
+    meaning against your Sonnet version before changing them.
+    """
+
+    def __init__(self, x_size=0.0, y_size=0.0, x_scale=1.0, y_scale=1.0,
+                 nlev=1, nsubs=20, eeff=0):
+        self.x_size = x_size      # box width in x (micrometres)
+        self.y_size = y_size      # box width in y (micrometres)
+        self.x_scale = x_scale    # desired maximum cell size in x (micrometres)
+        self.y_scale = y_scale    # desired maximum cell size in y (micrometres)
+        self.nlev = nlev          # number of dielectric levels (the leading "1")
+        self.nsubs = nsubs        # trailing BOX field (20 in the original)
+        self.eeff = eeff          # trailing BOX field (0 in the original)
+
+        # generates safe size parameters (integer multiples of the scale size)
+        # and number of cells (doubled because of Sonnet conventions)
+        self.safe_x_size, self.x_cells2 = self._safe_scale(self.x_size, self.x_scale)
+        self.safe_y_size, self.y_cells2 = self._safe_scale(self.y_size, self.y_scale)
+
+    def _safe_scale(self, size, scale):
+        """
+        Returns a size parameter that is an integer number of unit cells, and 
+        a number representing the number of unit cells
+        Twice the number of cells along an axis (Sonnet convention), computed
+        with Decimal to avoid floating-point error.
+        """
+        dec_size = decimal.Decimal(str(size))
+        dec_scale = decimal.Decimal(str(scale))
+        # removes any remainder from the size dimension
+        safe_size = dec_size - (dec_size % dec_scale)
+        # calculates the number of boxes needed (doubled for Sonnet reasons)
+        safe_boxes = (2 * dec_size) // dec_scale
+        return safe_size, safe_boxes
+
+    def gen_sonnet_box(self):
+        """Return the .son BOX line."""
+        return "BOX {} {} {} {} {} {} {}".format(
+            self.nlev, self.safe_x_size, self.safe_y_size, self.x_cells2, self.y_cells2, self.nsubs, self.eeff)
+
+class Geometry(object):
+    """
+    Assembles the full Sonnet GEO block from its parts and renders it via
+    gen_sonnet_geometry():
+
+        GEO
+        <metals>          -- MetalList.gen_sonnet_metals()  (TMET, BMET, MET ...)
+        <box>             -- Box.gen_sonnet_box()           (BOX ...)
+        <dielectrics>     -- one Dielectric.gen_sonnet_dielectric() per layer
+        LORGN 0 <ysize> U -- local origin at (origin_x, ysize)
+        <ports>           -- Circuit ports
+        NUM <n>           -- polygon count
+        <polygons>        -- Circuit polygons
+        END GEO
+
+    The ports / NUM / polygons block comes straight from
+    Circuit.get_sonnet_string(), so this class only wraps the surrounding parts
+    around it. The circuit is (idempotently) generated before rendering.
+
+    ysize is the box height used for the local origin; it normally matches the
+    Box's / GroundPlane's y-size. Pass it as an int (e.g. 500) to match Sonnet's
+    "LORGN 0 500 U" formatting rather than "500.0".
+    """
+
+    def __init__(self, metal_list, box, dielectrics, circuit):
+        self.metal_list = metal_list
+        self.box = box
+        self.dielectrics = list(dielectrics)
+        self.circuit = circuit
+        # local origin: x defaults to 0, y is the box height (ysize)
+        self.origin_x = 0
+        self.origin_y = self.box.safe_y_size
+
+    # ------------------------------------------------------------------ #
+    # Section helpers
+    # ------------------------------------------------------------------ #
+    def gen_lorgn(self):
+        """Return the LORGN (local origin) line."""
+        return "LORGN {} {} U".format(self.origin_x, self.origin_y)
+
+    def gen_dielectrics(self):
+        """Return the dielectric layer lines, one per Dielectric, newline-joined."""
+        return "\n     ".join(dielectric.gen_sonnet_dielectric() for dielectric in self.dielectrics)
+
+    # ------------------------------------------------------------------ #
+    # Public API
+    # ------------------------------------------------------------------ #
+    def gen_sonnet_geometry(self):
+        """Return the complete GEO ... END GEO block."""
+        # make sure the circuit's polygons and ports exist (idempotent)
+        self.circuit.generate()
+
+        text = "GEO"
+        text += "\n" + self.metal_list.gen_sonnet_metals()
+        text += "\n" + self.box.gen_sonnet_box()
+        text += "\n     " + self.gen_dielectrics()
+        text += "\n" + self.gen_lorgn()
+        # get_sonnet_string() already begins with a newline (its ports block),
+        # so concatenate it directly rather than adding another separator
+        text += self.circuit.get_sonnet_string()
+        text += "\nEND GEO"
+        return text
+
+class Opt(object):
+    """
+    The OPT block (optimisation settings):
+
+        OPT
+        MAX <max_iterations>
+        END OPT
+
+    max_iterations is the OPT block's MAX field (the iteration cap in the
+    template); defaults to the template value.
+    """
+
+    def __init__(self, max_iterations=100):
+        self.max_iterations = max_iterations
+
+    def gen_sonnet_opt(self):
+        """Return the OPT ... END OPT block."""
+        return "\n".join(["OPT", "MAX {}".format(self.max_iterations), "END OPT"])
+
+
+class VarSweep(object):
+    """
+    The VARSWP block (frequency sweep):
+
+        VARSWP
+        ENABLED <enabled>
+        FREQ <freq_enabled> <adaptive> <entry_type> <f1> <f2> <n_freqs> <max_freqs>
+        END
+        END VARSWP
+
+    The genuinely tunable parts are the sweep band (f1, f2), the frequency
+    count (n_freqs, -1 meaning automatic for an adaptive sweep), and the cap
+    (max_freqs). freq_enabled / adaptive / entry_type are structural tokens
+    reproduced from the template (an adaptive ABS sweep); confirm them against
+    your Sonnet version before changing.
+    """
+
+    def __init__(self, enabled="Y", freq_enabled="Y", adaptive="AY", entry_type="ABS_ENTRY",
+                 f1=3.0, f2=6.0, n_freqs=-1, max_freqs=2000):
+        self.enabled = enabled
+        self.freq_enabled = freq_enabled
+        self.adaptive = adaptive
+        self.entry_type = entry_type
+        self.f1 = f1                  # sweep start (GHz)
+        self.f2 = f2                  # sweep end (GHz)
+        self.n_freqs = n_freqs        # number of frequencies (-1 = automatic)
+        self.max_freqs = max_freqs    # maximum number of frequencies
+
+    def gen_sonnet_varsweep(self):
+        """Return the VARSWP ... END VARSWP block."""
+        lines = [
+            "VARSWP",
+            "ENABLED {}".format(self.enabled),
+            "FREQ {} {} {} {} {} {} {}".format(self.freq_enabled, self.adaptive, self.entry_type,
+                                               self.f1, self.f2, self.n_freqs, self.max_freqs),
+            "END",
+            "END VARSWP",
+        ]
+        return "\n".join(lines)
+
+
+class FileOut(object):
+    """
+    The FILEOUT block (response-data output file):
+
+        FILEOUT
+        <file_type> <pre_flags> <filename> <post_flags>
+        FOLDER <folder>
+        END FILEOUT
+
+    filename and folder are the obvious knobs (filename supports Sonnet's
+    $BASENAME variable). The CSV format specifiers around the filename are kept
+    as pre_flags / post_flags strings reproduced verbatim from the template,
+    since their individual tokens are Sonnet CSV-format codes; override the
+    whole string if you need a different export format.
+    """
+
+    def __init__(self, file_type="CSV", pre_flags="D Y", filename="$BASENAME.csv",
+                 post_flags="NC 15 S MA R 50", folder="."):
+        self.file_type = file_type
+        self.pre_flags = pre_flags
+        self.filename = filename
+        self.post_flags = post_flags
+        self.folder = folder
+
+    def gen_sonnet_fileout(self):
+        """Return the FILEOUT ... END FILEOUT block."""
+        lines = [
+            "FILEOUT",
+            "{} {} {} {}".format(self.file_type, self.pre_flags, self.filename, self.post_flags),
+            "FOLDER {}".format(self.folder),
+            "END FILEOUT",
+        ]
+        return "\n".join(lines)
+
+
+class Translator(object):
+    """
+    The TRANSLATOR block and its GDSEXPORT sub-block (GDS export options):
+
+        TRANSLATOR
+        GDSEXPORT
+        UseTLs <bool> ... AllEdgeViasAsVia <bool>
+        END
+        END TRANSLATOR
+
+    Each GDSEXPORT line is a self-named option. The boolean options are stored
+    as Python bools and rendered as lowercase true/false; circle_type and
+    circle_size carry their own values. All default to the template.
+    """
+
+    def __init__(self, use_tls=True, sep_obj=False, sep_mat=True, divide_multi=False,
+                 circles=False, circle_type="inscribed", circle_size=0,
+                 keep_metals=True, keep_vias=False, keep_via_pads=False, keep_bricks=True,
+                 keep_edge_vias=False, keep_parent=False, convert_parent=False,
+                 all_edge_vias_as_via=False):
+        self.use_tls = use_tls
+        self.sep_obj = sep_obj
+        self.sep_mat = sep_mat
+        self.divide_multi = divide_multi
+        self.circles = circles
+        self.circle_type = circle_type
+        self.circle_size = circle_size
+        self.keep_metals = keep_metals
+        self.keep_vias = keep_vias
+        self.keep_via_pads = keep_via_pads
+        self.keep_bricks = keep_bricks
+        self.keep_edge_vias = keep_edge_vias
+        self.keep_parent = keep_parent
+        self.convert_parent = convert_parent
+        self.all_edge_vias_as_via = all_edge_vias_as_via
+
+    @staticmethod
+    def _bool(value):
+        """Render a Python bool as Sonnet's lowercase true/false."""
+        return "true" if value else "false"
+
+    def gen_sonnet_translator(self):
+        """Return the TRANSLATOR ... END TRANSLATOR block."""
+        b = self._bool
+        lines = [
+            "TRANSLATOR",
+            "GDSEXPORT",
+            "UseTLs {}".format(b(self.use_tls)),
+            "SepObj {}".format(b(self.sep_obj)),
+            "SepMat {}".format(b(self.sep_mat)),
+            "DivideMulti {}".format(b(self.divide_multi)),
+            "Circles {}".format(b(self.circles)),
+            "CircleType {}".format(self.circle_type),
+            "CircleSize {}".format(self.circle_size),
+            "KeepMetals {}".format(b(self.keep_metals)),
+            "KeepVias {}".format(b(self.keep_vias)),
+            "KeepViaPads {}".format(b(self.keep_via_pads)),
+            "KeepBricks {}".format(b(self.keep_bricks)),
+            "KeepEdgeVias {}".format(b(self.keep_edge_vias)),
+            "KeepParent {}".format(b(self.keep_parent)),
+            "ConvertParent {}".format(b(self.convert_parent)),
+            "AllEdgeViasAsVia {}".format(b(self.all_edge_vias_as_via)),
+            "END",
+            "END TRANSLATOR",
+        ]
+        return "\n".join(lines)
+
+
+class Tail(object):
+    """
+    Bundles the OPT, VARSWP, FILEOUT, and TRANSLATOR blocks into the .son tail,
+    replacing the old gen_tail() that read tail.son from a template. Each part
+    defaults to its own template-matching values, so Tail().gen_sonnet_tail()
+    reproduces the original template; pass custom Opt / VarSweep / FileOut /
+    Translator objects to override any of them.
+
+        tail = Tail()
+        text = tail.gen_sonnet_tail()
+    """
+
+    def __init__(self, opt=None, varsweep=None, fileout=None, translator=None):
+        self.opt = opt if opt is not None else Opt()
+        self.varsweep = varsweep if varsweep is not None else VarSweep()
+        self.fileout = fileout if fileout is not None else FileOut()
+        self.translator = translator if translator is not None else Translator()
+
+    def gen_sonnet_tail(self):
+        """Return the full tail: OPT, then VARSWP, then FILEOUT, then TRANSLATOR."""
+        return "\n".join([
+            self.opt.gen_sonnet_opt(),
+            self.varsweep.gen_sonnet_varsweep(),
+            self.fileout.gen_sonnet_fileout(),
+            self.translator.gen_sonnet_translator(),
+        ])
+
+class Mkid(object):
+    """
+    Top-level assembler for a complete Sonnet .son file. Holds a Preamble, a
+    Geometry, and a Tail, and concatenates their .son representations -- this
+    replaces the old gen_text(), which joined gen_preamble(), gen_geometry()
+    and gen_tail() with newlines.
+
+    The Geometry must be supplied (it carries the circuit, metals, box and
+    dielectrics). The Preamble and Tail default to their template-matching
+    versions, so for the common case you only pass the geometry:
+
+        mkid = Mkid(geometry)
+        son_text = mkid.gen_sonnet_mkid()
+
+    Pass custom Preamble / Tail objects to override the header, units, control,
+    sweep, output or translator settings:
+
+        mkid = Mkid(geometry, preamble=Preamble(...), tail=Tail(...))
+
+    To write the file, hand the string to your existing file-writing routine,
+    e.g. write_son(mkid.gen_sonnet_mkid()).
+    """
+
+    def __init__(self, geometry, preamble=None, tail=None):
+        self.geometry = geometry
+        self.preamble = preamble if preamble is not None else Preamble()
+        self.tail = tail if tail is not None else Tail()
+
+    def gen_sonnet_mkid(self):
+        """Return the full .son file: preamble, then geometry, then tail."""
+        return "\n".join([
+            self.preamble.gen_sonnet_preamble(),
+            self.geometry.gen_sonnet_geometry(),
+            self.tail.gen_sonnet_tail(),
+        ])
+
+
+if __name__ == "__main__":
+    metals = MetalList()
+    metals.add_metal(Metal.superconductor())
+
+    box = Box(x_size=500, y_size=500, x_scale=1.0, y_scale=1.0)
+
+    top_layer = Dielectric(name="Unnamed", thickness=200.0, erel=1.0, mrel=1.0)
+    substrate = Dielectric(name="Sapphire", thickness=450.0, erel=9.3, mrel=1.0, anisotropic=True, erel_2=11.5)
+    dielectrics = [top_layer, substrate]
+
+    ground_plane = GroundPlane(x_size=float(box.safe_x_size), y_size=float(box.safe_y_size),
+                               top_b=500.0-348.0, res_yl=348-173,
+                               side_b=12.0, near_b=12.0, feed_b=35.0, oppo_b=25.0,
+                               feed_s=5.0, 
+                               start_polygon_id=100)
+
+    capacitor = Capacitor(finger_p=4.0, finger_b=2.0, finger_l=450.0, num_fingers=27, finger_lf=84.0,
+                          side_b=7.0, top_b=10.0, transfer_b=5.0, transfer_0=250.0,
+                          ij_start=240.0)
+
+
+    inductor = Inductor(turns=5,
+                breadth=1.0,
+                space=1.0,
+                length=20.0)
+
+    circuit = Circuit(ground_plane=ground_plane, capacitor=capacitor, inductor=inductor,
+                      cap_dx=4.0, cap_dy=4.0)
+
+    circuit.generate()
+
+    geometry=Geometry(metal_list=metals, box=box, dielectrics=dielectrics, circuit=circuit)
+
+    mkid=Mkid(geometry)
+
+
+    text = mkid.gen_sonnet_mkid()
+    out_path = os.path.expanduser('~/test/mkid_sonnet_variation/test_full.son')
+    out_file = open(out_path, 'w')
+    out_file.write(text)
+    out_file.close()
+    #polygons=inductor.get_polygons()
+    #print(geometry.gen_sonnet_geometry())
+    """
+    plt.figure()
+
+    polygons=circuit.get_polygons()
+    num = len(polygons)
+    # creates a set of colours using the red colourmap
+    colors = plt.cm.Reds(np.linspace(0.2, 1, num))
+    for i in range(num):
+        x,y = polygons[i].get_points()
+        plt.fill(x,y,color=colors[i])
+
+
+    polygons=capacitor.get_polygons()
+    num = len(polygons)
+    # creates a set of colours using the Blue colourmap
+    colors = plt.cm.Blues(np.linspace(0.2, 1, num))
+    for i in range(num):
+        x,y = polygons[i].get_points()
+        plt.fill(x,y,color=colors[i])
+
+
+    polygons=inductor.get_polygons()
+    num = len(polygons)
+    # creates a set of colours using the Greens colourmap
+    colors = plt.cm.Greens(np.linspace(0.2, 1, num))
+    for i in range(num):
+        x,y = polygons[i].get_points()
+        plt.fill(x,y,color=colors[i])
+
+
+    x,y = ground_plane.get_port_coords()
+    plt.plot(x,y,'s',color="goldenrod")
+
+    plt.show()
+
+    plt.close()
+    """
