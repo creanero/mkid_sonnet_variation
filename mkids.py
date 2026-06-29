@@ -1,8 +1,6 @@
-from curses import meta
-
 from matplotlib import pyplot as plt
 import numpy as np
-
+import decimal
 
 
 class polygon(object):
@@ -853,34 +851,68 @@ class Metal(object):
         return cls(name=name, metal_type="SUP", pattern=pattern,
                    parameters=[rdc, rrf, xdc, ls])
 
-    def gen_sonnet_metal(self):
-        """Return the .son MET line for this metal."""
-        parts = ['MET "{}"'.format(self.name), str(self.pattern), self.metal_type]
+    def gen_sonnet_metal(self, keyword="MET"):
+        """Return the .son metal line. keyword is the record type: MET, TMET, or BMET."""
+        parts = ['{} "{}"'.format(keyword, self.name), str(self.pattern), self.metal_type]
         parts.extend(str(value) for value in self.parameters)
         return " ".join(parts)
 
-ground_plane = GroundPlane(x_size=500.0, y_size=500.0,
-                           top_b=500.0-348.0, res_yl=348-173,
-                           side_b=12.0, near_b=12.0, feed_b=35.0, oppo_b=25.0,
-                           feed_s=5.0, 
-                           start_polygon_id=100)
+class MetalList(object):
+    """
+    Holds the metals for a Sonnet circuit and renders them as .son lines.
 
-capacitor = Capacitor(finger_p=4.0, finger_b=2.0, finger_l=450.0, num_fingers=27, finger_lf=84.0,
-                      side_b=7.0, top_b=10.0, transfer_b=5.0, transfer_0=250.0,
-                      ij_start=240.0, ij_end=243.0)
+    Always has:
+      * top    -- rendered as a TMET line (the top of the box)
+      * bottom -- rendered as a BMET line (the bottom of the box)
+    and any number of ordinary metals, each rendered as a MET line, which can
+    be added and removed.
+
+    The top and bottom default to the lossless metal from met_p1.son
+    (TMET/BMET "Lossless" 0 SUP 0 0 0 0); pass your own Metal objects to
+    override them. gen_sonnet_metals() emits top, then bottom, then the
+    ordinary metals in order -- matching how the original gen_met() assembled
+    met_p1.son followed by the MET lines.
+
+        metals = MetalList()
+        metals.add_metal(Metal.superconductor(name="TiN multi", ls=5, pattern=2))
+        metals.add_metal(Metal.superconductor(name="thick Ta", ls=0.001, pattern=3))
+        text = metals.gen_sonnet_metals()
+
+    Requires Metal.gen_sonnet_metal() to accept a keyword argument (default
+    "MET") so the same Metal can be emitted as a MET, TMET, or BMET line.
+    """
+
+    def __init__(self, top=None, bottom=None, metals=None):
+        # default top/bottom match the lossless TMET/BMET lines in met_p1.son
+        self.top = top if top is not None else Metal.superconductor(name="Lossless", ls=0, pattern=0)
+        self.bottom = bottom if bottom is not None else Metal.superconductor(name="Lossless", ls=0, pattern=0)
+        # ordinary metals (MET lines); add to / remove from with the methods below
+        self.metals = list(metals) if metals is not None else []
+
+    def add_metal(self, metal):
+        """Append an ordinary metal (rendered as a MET line)."""
+        self.metals.append(metal)
+
+    def remove_metal(self, metal):
+        """Remove a previously added metal by reference (raises ValueError if absent)."""
+        self.metals.remove(metal)
+
+    def get_metals(self):
+        return self.metals
+
+    def gen_sonnet_metals(self):
+        """
+        Return the .son representation of every metal: the TMET line, the BMET
+        line, then one MET line per ordinary metal, newline-separated.
+        """
+        lines = [self.top.gen_sonnet_metal(keyword="TMET"),
+                 self.bottom.gen_sonnet_metal(keyword="BMET")]
+        lines.extend(metal.gen_sonnet_metal() for metal in self.metals)
+        return "\n".join(lines)
 
 
-inductor = Inductor(turns=5,
-            breadth=1.0,
-            space=1.0,
-            length=20.0)
 
-circuit = Circuit(ground_plane=ground_plane, capacitor=capacitor, inductor=inductor,
-                  cap_dx=4.0, cap_dy=4.0)
 
-circuit.generate()
-
-import decimal
 
 
 class Box(object):
@@ -936,7 +968,26 @@ class Box(object):
         return "BOX {} {} {} {} {} {} {}".format(
             self.nlev, self.safe_x_size, self.safe_y_size, self.x_cells2, self.y_cells2, self.nsubs, self.eeff)
 
+ground_plane = GroundPlane(x_size=500.0, y_size=500.0,
+                           top_b=500.0-348.0, res_yl=348-173,
+                           side_b=12.0, near_b=12.0, feed_b=35.0, oppo_b=25.0,
+                           feed_s=5.0, 
+                           start_polygon_id=100)
 
+capacitor = Capacitor(finger_p=4.0, finger_b=2.0, finger_l=450.0, num_fingers=27, finger_lf=84.0,
+                      side_b=7.0, top_b=10.0, transfer_b=5.0, transfer_0=250.0,
+                      ij_start=240.0, ij_end=243.0)
+
+
+inductor = Inductor(turns=5,
+            breadth=1.0,
+            space=1.0,
+            length=20.0)
+
+circuit = Circuit(ground_plane=ground_plane, capacitor=capacitor, inductor=inductor,
+                  cap_dx=4.0, cap_dy=4.0)
+
+circuit.generate()
 #polygons=inductor.get_polygons()
 print(circuit.get_sonnet_string())
 plt.figure()
