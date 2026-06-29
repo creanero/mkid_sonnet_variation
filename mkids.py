@@ -4,10 +4,21 @@ import numpy as np
 
 
 class polygon(object):
-    def __init__(self, polygon_id=100):
+    def __init__(self, layer=0, metal=0, polygon_id=100, anisotropic=False, subsect_xmin=1, subsect_ymin=1, subsect_xmax=100, subsect_ymax=100, edge_mesh=True):
         self.__x_coords = []
         self.__y_coords = []
-        self.__polygon_id = polygon_id
+        self.__layer = layer  # label in order of the layers
+        self.__metal = metal  # label of the "metal" used for the polygon
+        self.__polygon_id = polygon_id  # the "name" of this particular polygon
+        self.__anisotropic = anisotropic  # whether the metal is anisotropic or not
+
+        # Advanced Meshing Parameters
+        # Subsectioning limits
+        self.__subsect_xmin = subsect_xmin
+        self.__subsect_ymin = subsect_ymin
+        self.__subsect_xmax = subsect_xmax
+        self.__subsect_ymax = subsect_ymax
+        self.__edge_mesh = edge_mesh  # whether edge meshing is used or not
     def add_point(self, x, y):
         self.__x_coords.append(x)
         self.__y_coords.append(y)
@@ -18,9 +29,15 @@ class polygon(object):
         return self.__x_coords, self.__y_coords
     def get_num_points(self):
         return len(self.__x_coords)
+    def _bool_to_YN(self, bool_arg):
+        if bool_arg:
+            return 'Y'
+        else:
+            return 'N'
     def gen_sonnet_polygon(self):
         # Generate the polygon in the Sonnet format
-        out_text = "0 5 0 N {} 1 1 100 100 0 0 0 Y".format(self.__polygon_id)
+        # TODO: figure out the last few parameters.
+        out_text = "{} {} {} {} {} {} {} {} {} 0 0 0 {}".format(self.__layer, self.get_num_points(), self.__metal, self.__polygon_id, self._bool_to_YN(self.__anisotropic), self.__subsect_xmin, self.__subsect_ymin, self.__subsect_xmax, self.__subsect_ymax, self._bool_to_YN(self.__edge_mesh))
         # iterate through the points and add them to the output text
         for x, y in zip(self.__x_coords, self.__y_coords):
             # Add each point to the output text on a new line
