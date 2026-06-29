@@ -1436,83 +1436,83 @@ class Mkid(object):
         ])
 
 
+if __name__ == "__main__":
+    metals = MetalList()
+    metals.add_metal(Metal.superconductor())
 
-metals = MetalList()
-metals.add_metal(Metal.superconductor())
+    box = Box(x_size=500, y_size=500, x_scale=1.0, y_scale=1.0)
 
-box = Box(x_size=500, y_size=500, x_scale=1.0, y_scale=1.0)
+    top_layer = Dielectric(name="Unnamed", thickness=200.0, erel=1.0, mrel=1.0)
+    substrate = Dielectric(name="Sapphire", thickness=450.0, erel=9.3, mrel=1.0, anisotropic=True, erel_2=11.5)
+    dielectrics = [top_layer, substrate]
 
-top_layer = Dielectric(name="Unnamed", thickness=200.0, erel=1.0, mrel=1.0)
-substrate = Dielectric(name="Sapphire", thickness=450.0, erel=9.3, mrel=1.0, anisotropic=True, erel_2=11.5)
-dielectrics = [top_layer, substrate]
+    ground_plane = GroundPlane(x_size=float(box.safe_x_size), y_size=float(box.safe_y_size),
+                               top_b=500.0-348.0, res_yl=348-173,
+                               side_b=12.0, near_b=12.0, feed_b=35.0, oppo_b=25.0,
+                               feed_s=5.0, 
+                               start_polygon_id=100)
 
-ground_plane = GroundPlane(x_size=float(box.safe_x_size), y_size=float(box.safe_y_size),
-                           top_b=500.0-348.0, res_yl=348-173,
-                           side_b=12.0, near_b=12.0, feed_b=35.0, oppo_b=25.0,
-                           feed_s=5.0, 
-                           start_polygon_id=100)
-
-capacitor = Capacitor(finger_p=4.0, finger_b=2.0, finger_l=450.0, num_fingers=27, finger_lf=84.0,
-                      side_b=7.0, top_b=10.0, transfer_b=5.0, transfer_0=250.0,
-                      ij_start=240.0)
-
-
-inductor = Inductor(turns=5,
-            breadth=1.0,
-            space=1.0,
-            length=20.0)
-
-circuit = Circuit(ground_plane=ground_plane, capacitor=capacitor, inductor=inductor,
-                  cap_dx=4.0, cap_dy=4.0)
-
-circuit.generate()
-
-geometry=Geometry(metal_list=metals, box=box, dielectrics=dielectrics, circuit=circuit)
-
-mkid=Mkid(geometry)
+    capacitor = Capacitor(finger_p=4.0, finger_b=2.0, finger_l=450.0, num_fingers=27, finger_lf=84.0,
+                          side_b=7.0, top_b=10.0, transfer_b=5.0, transfer_0=250.0,
+                          ij_start=240.0)
 
 
-text = mkid.gen_sonnet_mkid()
-out_path = os.path.expanduser('~/test/mkid_sonnet_variation/test_full.son')
-out_file = open(out_path, 'w')
-out_file.write(text)
-out_file.close()
-#polygons=inductor.get_polygons()
-#print(geometry.gen_sonnet_geometry())
-"""
-plt.figure()
+    inductor = Inductor(turns=5,
+                breadth=1.0,
+                space=1.0,
+                length=20.0)
 
-polygons=circuit.get_polygons()
-num = len(polygons)
-# creates a set of colours using the red colourmap
-colors = plt.cm.Reds(np.linspace(0.2, 1, num))
-for i in range(num):
-    x,y = polygons[i].get_points()
-    plt.fill(x,y,color=colors[i])
+    circuit = Circuit(ground_plane=ground_plane, capacitor=capacitor, inductor=inductor,
+                      cap_dx=4.0, cap_dy=4.0)
+
+    circuit.generate()
+
+    geometry=Geometry(metal_list=metals, box=box, dielectrics=dielectrics, circuit=circuit)
+
+    mkid=Mkid(geometry)
 
 
-polygons=capacitor.get_polygons()
-num = len(polygons)
-# creates a set of colours using the Blue colourmap
-colors = plt.cm.Blues(np.linspace(0.2, 1, num))
-for i in range(num):
-    x,y = polygons[i].get_points()
-    plt.fill(x,y,color=colors[i])
+    text = mkid.gen_sonnet_mkid()
+    out_path = os.path.expanduser('~/test/mkid_sonnet_variation/test_full.son')
+    out_file = open(out_path, 'w')
+    out_file.write(text)
+    out_file.close()
+    #polygons=inductor.get_polygons()
+    #print(geometry.gen_sonnet_geometry())
+    """
+    plt.figure()
+
+    polygons=circuit.get_polygons()
+    num = len(polygons)
+    # creates a set of colours using the red colourmap
+    colors = plt.cm.Reds(np.linspace(0.2, 1, num))
+    for i in range(num):
+        x,y = polygons[i].get_points()
+        plt.fill(x,y,color=colors[i])
 
 
-polygons=inductor.get_polygons()
-num = len(polygons)
-# creates a set of colours using the Greens colourmap
-colors = plt.cm.Greens(np.linspace(0.2, 1, num))
-for i in range(num):
-    x,y = polygons[i].get_points()
-    plt.fill(x,y,color=colors[i])
+    polygons=capacitor.get_polygons()
+    num = len(polygons)
+    # creates a set of colours using the Blue colourmap
+    colors = plt.cm.Blues(np.linspace(0.2, 1, num))
+    for i in range(num):
+        x,y = polygons[i].get_points()
+        plt.fill(x,y,color=colors[i])
 
 
-x,y = ground_plane.get_port_coords()
-plt.plot(x,y,'s',color="goldenrod")
+    polygons=inductor.get_polygons()
+    num = len(polygons)
+    # creates a set of colours using the Greens colourmap
+    colors = plt.cm.Greens(np.linspace(0.2, 1, num))
+    for i in range(num):
+        x,y = polygons[i].get_points()
+        plt.fill(x,y,color=colors[i])
 
-plt.show()
 
-plt.close()
-"""
+    x,y = ground_plane.get_port_coords()
+    plt.plot(x,y,'s',color="goldenrod")
+
+    plt.show()
+
+    plt.close()
+    """
