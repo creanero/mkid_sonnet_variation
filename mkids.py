@@ -78,7 +78,7 @@ class Port(object):
                                               self.inductance, self.capacitance, self.x, self.y))
 
 
-class Geometry(object):
+class Component(object):
     def __init__(self, start_polygon_id=100):
         self.__polygons = []
         self.__current_polygon_id = start_polygon_id
@@ -112,7 +112,7 @@ class Geometry(object):
         self.add_polygon(Rectangle(x0, y0, (direction * width), length, polygon_id=self.__current_polygon_id))
         self.__current_polygon_id = self.__current_polygon_id + 1
 
-class Capacitor(Geometry):
+class Capacitor(Component):
     """
     Generates Sonnet (.son) polygon code for an interdigitated capacitor:
     the rectangular frame plus alternating fingers and a final partial finger.
@@ -272,7 +272,7 @@ class Capacitor(Geometry):
 
 
 
-class Inductor(Geometry):
+class Inductor(Component):
     """
     Generates Sonnet (.son) polygon code for a spiral inductor with a junction.
 
@@ -414,7 +414,7 @@ class Inductor(Geometry):
             self._rect(origin_x, origin_y, direction, *r) 
 
 
-class GroundPlane(Geometry):
+class GroundPlane(Component):
     """
     Generates Sonnet (.son) polygon code for the ground plane: a top bar, two
     resonator sidebars, three full-width horizontal bars carrying edge ports
