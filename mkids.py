@@ -1,7 +1,160 @@
 from matplotlib import pyplot as plt
 import numpy as np
 import decimal
+import datetime
 
+
+class Header(object):
+    """
+    The top of a Sonnet .son file: the FTYP / VER lines and the HEADER block.
+        HEADER
+        LIC <lic>
+        DAT <dat>
+        BUILT_BY_CREATED <built_by_created>
+        BUILT_BY_SAVED <built_by_saved>
+        MDATE <mdate>
+        HDATE <hdate>
+        END HEADER
+    """
+
+    def __init__(self,
+                 lic="maynooth60.1.87150",
+                 dat=datetime.now().strftime("%m/%d/%Y %H:%M:%S"),
+                 built_by_created="xgeom 13.52 {}".format(datetime.now().strftime("%m/%d/%Y %H:%M:%S")),
+                 built_by_saved="Sonnet Variation",
+                 mdate=datetime.now().strftime("%m/%d/%Y %H:%M:%S"),
+                 hdate=datetime.now().strftime("%m/%d/%Y %H:%M:%S")):
+        self.lic = lic
+        self.dat = dat
+        self.built_by_created = built_by_created
+        self.built_by_saved = built_by_saved
+        self.mdate = mdate
+        self.hdate = hdate
+
+    def gen_sonnet_header(self):
+        """Return the FTYP / VER lines and the HEADER ... END HEADER block."""
+        lines = [
+            "HEADER",
+            "LIC {}".format(self.lic),
+            "DAT {}".format(self.dat),
+            "BUILT_BY_CREATED {}".format(self.built_by_created),
+            "BUILT_BY_SAVED {}".format(self.built_by_saved),
+            "MDATE {}".format(self.mdate),
+            "HDATE {}".format(self.hdate),
+            "END HEADER",
+        ]
+        return "\n".join(lines)
+
+
+class Units(object):
+    """
+    The DIM block, which sets the units for each physical quantity:
+
+        DIM
+        ANG <ang>     CAP <cap>     CON <con>     FREQ <freq>
+        IND <ind>     LNG <lng>     RES <res>
+        END DIM
+
+    Fields default to the template units (degrees, pF, /Ohm, GHz, nH, um, Ohm).
+    """
+
+    def __init__(self, ang="DEG", cap="PF", con="/OH", freq="GHZ", ind="NH", lng="UM", res="OH"):
+        self.ang = ang    # angle
+        self.cap = cap    # capacitance
+        self.con = con    # conductance
+        self.freq = freq  # frequency
+        self.ind = ind    # inductance
+        self.lng = lng    # length
+        self.res = res    # resistance
+
+    def gen_sonnet_units(self):
+        """Return the DIM ... END DIM block."""
+        lines = [
+            "DIM",
+            "ANG {}".format(self.ang),
+            "CAP {}".format(self.cap),
+            "CON {}".format(self.con),
+            "FREQ {}".format(self.freq),
+            "IND {}".format(self.ind),
+            "LNG {}".format(self.lng),
+            "RES {}".format(self.res),
+            "END DIM",
+        ]
+        return "\n".join(lines)
+
+
+class Control(object):
+    """
+    The CONTROL block, holding the analysis-control settings:
+
+        CONTROL
+        VARSWP            (emitted when varswp is True)
+        OPTIONS <options>
+        SPEED <speed>
+        CACHE_ABS <cache_abs>
+        Q_ACC <q_acc>
+        DET_ABS_RES <det_abs_res>
+        END CONTROL
+
+    VARSWP is a flag line (no value), modelled as the boolean varswp.
+    The remaining fields default to the template values.
+    """
+
+    def __init__(self, varswp=True, options="-dj", speed=2, cache_abs=1, q_acc="Y", det_abs_res="Y"):
+        self.varswp = varswp            # emit the VARSWP flag line
+        self.options = options
+        self.speed = speed
+        self.cache_abs = cache_abs
+        self.q_acc = q_acc
+        self.det_abs_res = det_abs_res
+
+    def gen_sonnet_control(self):
+        """Return the CONTROL ... END CONTROL block."""
+        lines = ["CONTROL"]
+        if self.varswp:
+            lines.append("VARSWP")
+            lines.append("OPTIONS {}".format(self.options))
+            lines.append("SPEED {}".format(self.speed))
+            lines.append("CACHE_ABS {}".format(self.cache_abs))
+            lines.append("Q_ACC {}".format(self.q_acc))
+            lines.append("DET_ABS_RES {}".format(self.det_abs_res))
+            lines.append("END CONTROL")
+        return "\n".join(lines)
+
+
+class Preamble(object):
+    """
+    Bundles the Header, Units, and Control blocks into the .son preamble,
+    replacing the old gen_preamble() that read head_dim_control.son from a
+    template. Each part defaults to its own template-matching values, so
+    Preamble().gen_sonnet_preamble() reproduces the original template; pass
+    custom Header / Units / Control objects to override any of them.
+
+        preamble = Preamble()
+        text = preamble.gen_sonnet_preamble()
+    """
+
+    def __init__(self,
+                 file_type="SONPROJ 18", file_comment="Sonnet Project File",
+                 version="18.58", 
+                 header=None, units=None, control=None):
+        
+        self.file_type = file_type
+        self.file_comment = file_comment
+        self.version = version
+        self.header = header if header is not None else Header()
+        self.units = units if units is not None else Units()
+        self.control = control if control is not None else Control()
+
+    def gen_sonnet_preamble(self):
+        """Return the full preamble: header, then units, then control."""
+        return "\n".join([
+            "FTYP {} ! {}".format(self.file_type, self.file_comment),
+            "VER {}".format(self.version),
+            self.header.gen_sonnet_header(),
+            self.units.gen_sonnet_units(),
+            self.control.gen_sonnet_control(),
+        ])
 
 class polygon(object):
     def __init__(self, layer=0, metal=0, anisotropic=False, polygon_id=100, subsect_xmin=1, subsect_ymin=1, subsect_xmax=100, subsect_ymax=100, edge_mesh=True):
