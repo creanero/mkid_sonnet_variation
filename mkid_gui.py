@@ -57,6 +57,7 @@ SPEC = [
     ("box_y_size",      "Size in y",      "MKID", 500.0, "y",     False),
     ("box_x_scale",     "x unit cell",     "MKID", 1.0,   "scale", False),
     ("box_y_scale",     "y unit cell",     "MKID", 1.0,   "scale", False),
+    ("box_ls",     "Kinetic Inductance",     "MKID", 5.0,   "ls", False),
     # Ground plane
     ("gp_top_b",        "Top Bar",       "Ground Plane", 152.0, "y", False),  # 500 - 348
     ("gp_res_yl",       "Resonator length (y)",      "Ground Plane", 175.0, "y", False),  # 348 - 173
@@ -115,7 +116,7 @@ def build_mkid(v):
               x_scale=v["box_x_scale"], y_scale=v["box_y_scale"])
 
     metals = MetalList()
-    metals.add_metal(Metal.superconductor())
+    metals.add_metal(Metal.superconductor(ls=v["box_ls"]))
 
     dielectrics = [
         Dielectric(name="Unnamed", thickness=200.0, erel=1.0, mrel=1.0),
@@ -242,7 +243,7 @@ class MkidGUI:
     def _step_for(self, step_type):
         xs, ys = self._scales()
         return {"x": xs, "y": ys, "breadth": max(xs, ys),
-                "count": 1, "scale": 0.1}.get(step_type, 1.0)
+                "count": 1, "scale": 0.1, "ls": 0.1}.get(step_type, 1.0)
 
     @staticmethod
     def _lo(step_type):
@@ -260,6 +261,8 @@ class MkidGUI:
             return "integer"
         if step_type == "scale":
             return "cell size (step = {:g})".format(self._step_for(step_type))
+        if step_type == "ls":
+            return "step = {:g} pH/\u25A1".format(self._step_for(step_type))
         return ""
 
     def _update_steps(self):
