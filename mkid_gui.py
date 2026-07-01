@@ -309,9 +309,9 @@ class MkidGUI:
         # same layering as the commented example: whole circuit in Reds, then
         # the capacitor (Blues) and inductor (Greens) painted on top, so the
         # ground plane reads red, the capacitor blue and the inductor green.
-        self._plot_polys(circuit.get_polygons(), "Reds")
-        self._plot_polys(capacitor.get_polygons(), "Blues")
-        self._plot_polys(inductor.get_polygons(), "Greens")
+        self._plot_polys(ground_plane.get_polygons(), "Blues")
+        self._plot_polys(capacitor.get_polygons(), "Greens")
+        self._plot_polys(inductor.get_polygons(), "Reds")
 
         xs, ys = ground_plane.get_port_coords()
         self.ax.plot(xs, ys, "s", color="goldenrod", markersize=6)
