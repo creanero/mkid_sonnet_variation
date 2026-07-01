@@ -27,6 +27,9 @@ that block in `if __name__ == "__main__":` (or remove it) so that
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from tkinter import PhotoImage
+
+from PIL import Image, ImageTk
 
 import matplotlib
 matplotlib.use("TkAgg")
@@ -205,6 +208,13 @@ class MkidGUI:
                 self.hints[key] = hint
                 row += 1
 
+            image = Image.open(self._image(group))
+            image = image.resize((400,400))
+            img = ImageTk.PhotoImage(image)
+            image_label = ttk.Label(tab,image=img)
+            image_label.grid(row=row, sticky="ew", padx=(0, 8), pady=3, columnspan=3)
+            image_label.image=img
+
         buttons = ttk.Frame(left, padding=(0, 8, 0, 0))
         buttons.pack(fill=tk.X)
         ttk.Button(buttons, text="Update plot", command=self._on_change).pack(fill=tk.X, pady=2)
@@ -252,6 +262,16 @@ class MkidGUI:
     @staticmethod
     def _hi(step_type):
         return 1.0e6
+    @staticmethod
+    def _image(group):
+        if group == "MKID":
+            return "./images/mkid.png"
+        elif group == "Ground Plane":
+            return "./images/ground_plane.png"
+        elif group ==  "Capacitor":
+            return "./images/capacitor.png"
+        elif group ==  "Inductor":
+            return "./images/inductor.png"
 
     def _hint(self, step_type):
         """Hint text shown beside each spinbox, with the live step size."""
