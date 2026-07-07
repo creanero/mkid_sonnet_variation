@@ -954,7 +954,7 @@ class Dielectric(object):
         """
         if self.anisotropic:
             if self.erel_2 is None:
-                self.rel_2 = self.erel
+                self.erel_2 = self.erel
             if self.mrel_2 is None:
                 self.mrel_2 = self.mrel
             if self.dielectric_loss_tan_2 is None:

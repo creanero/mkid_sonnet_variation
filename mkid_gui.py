@@ -27,6 +27,9 @@ that block in `if __name__ == "__main__":` (or remove it) so that
 
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
+from tkinter import PhotoImage
+
+from PIL import Image, ImageTk
 
 import matplotlib
 matplotlib.use("TkAgg")
@@ -57,6 +60,7 @@ SPEC = [
     ("box_y_size",      "Size in y",      "MKID", 500.0, "y",     False),
     ("box_x_scale",     "x unit cell",     "MKID", 1.0,   "scale", False),
     ("box_y_scale",     "y unit cell",     "MKID", 1.0,   "scale", False),
+    ("box_ls",     "Kinetic Inductance",     "MKID", 5.0,   "ls", False),
     # Ground plane
     ("gp_top_b",        "Top Bar",       "Ground Plane", 152.0, "y", False),  # 500 - 348
     ("gp_res_yl",       "Resonator length (y)",      "Ground Plane", 175.0, "y", False),  # 348 - 173
@@ -115,7 +119,7 @@ def build_mkid(v):
               x_scale=v["box_x_scale"], y_scale=v["box_y_scale"])
 
     metals = MetalList()
-    metals.add_metal(Metal.superconductor())
+    metals.add_metal(Metal.superconductor(ls=v["box_ls"]))
 
     dielectrics = [
         Dielectric(name="Unnamed", thickness=200.0, erel=1.0, mrel=1.0),
@@ -204,6 +208,13 @@ class MkidGUI:
                 self.hints[key] = hint
                 row += 1
 
+            image = Image.open(self._image(group))
+            image = image.resize((400,400))
+            img = ImageTk.PhotoImage(image)
+            image_label = ttk.Label(tab,image=img)
+            image_label.grid(row=row, sticky="ew", padx=(0, 8), pady=3, columnspan=3)
+            image_label.image=img
+
         buttons = ttk.Frame(left, padding=(0, 8, 0, 0))
         buttons.pack(fill=tk.X)
         ttk.Button(buttons, text="Update plot", command=self._on_change).pack(fill=tk.X, pady=2)
@@ -242,7 +253,7 @@ class MkidGUI:
     def _step_for(self, step_type):
         xs, ys = self._scales()
         return {"x": xs, "y": ys, "breadth": max(xs, ys),
-                "count": 1, "scale": 0.1}.get(step_type, 1.0)
+                "count": 1, "scale": 0.1, "ls": 0.1}.get(step_type, 1.0)
 
     @staticmethod
     def _lo(step_type):
@@ -251,6 +262,16 @@ class MkidGUI:
     @staticmethod
     def _hi(step_type):
         return 1.0e6
+    @staticmethod
+    def _image(group):
+        if group == "MKID":
+            return "./images/mkid.png"
+        elif group == "Ground Plane":
+            return "./images/ground_plane.png"
+        elif group ==  "Capacitor":
+            return "./images/capacitor.png"
+        elif group ==  "Inductor":
+            return "./images/inductor.png"
 
     def _hint(self, step_type):
         """Hint text shown beside each spinbox, with the live step size."""
@@ -260,6 +281,8 @@ class MkidGUI:
             return "integer"
         if step_type == "scale":
             return "cell size (step = {:g})".format(self._step_for(step_type))
+        if step_type == "ls":
+            return "step = {:g} pH/\u25A1".format(self._step_for(step_type))
         return ""
 
     def _update_steps(self):
@@ -309,9 +332,9 @@ class MkidGUI:
         # same layering as the commented example: whole circuit in Reds, then
         # the capacitor (Blues) and inductor (Greens) painted on top, so the
         # ground plane reads red, the capacitor blue and the inductor green.
-        self._plot_polys(circuit.get_polygons(), "Reds")
-        self._plot_polys(capacitor.get_polygons(), "Blues")
-        self._plot_polys(inductor.get_polygons(), "Greens")
+        self._plot_polys(ground_plane.get_polygons(), "Blues")
+        self._plot_polys(capacitor.get_polygons(), "Greens")
+        self._plot_polys(inductor.get_polygons(), "Reds")
 
         xs, ys = ground_plane.get_port_coords()
         self.ax.plot(xs, ys, "s", color="goldenrod", markersize=6)
