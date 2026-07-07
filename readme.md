@@ -14,7 +14,8 @@ Another tool generates MKID geometries based on command line inputs.  It is curr
 `python3 gen_mkids.py -h` or `python3 sonnet_csv_reader.py -h`
 
 ## Publications
-[A poster](LTD_2025_OC.pdf) describing the initial version of this software was presented at the Low Temperature Detectors conference on $3^{rd}$ June 2025.
+[A poster](SPIE_2026_OC.pdf) describing the GUI version of this software was presented at the SPIE Astronomical Telescopes and Instrumentation conference on $6^{th}$ July 2026.
+[A poster](LTD_2025_OC.pdf) describing the Command Line version of this software was presented at the Low Temperature Detectors conference on $3^{rd}$ June 2025. [Proceedings](https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=11479814) from that conference were published in IEEE TRANSACTIONS ON APPLIED SUPERCONDUCTIVITY, VOL. 36, NO. 6, SEPTEMBER 2026.
 
 ## Acknowledgements
 A template by Cathal McAleer is used as the base geometry. 
